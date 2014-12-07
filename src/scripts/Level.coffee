@@ -5,6 +5,7 @@ class Level
   FLOOR: 0
 
   constructor: ({ @width, @height }) ->
+    @freeTiles = []
     @tiles = []
     for i in [0..@width]
       @tiles[i] = new Array(@height)
@@ -13,6 +14,7 @@ class Level
     callback = (x, y, wall) =>
       @tiles[x][y] ?= []
       @tiles[x][y] = wall #if wall then WALL else FLOOR
+      @freeTiles.push([x,y]) unless wall == 1
     map = new ROT.Map.Digger(@width, @height)
     map.create(callback)
 
