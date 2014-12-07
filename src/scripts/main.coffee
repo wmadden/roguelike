@@ -3,7 +3,7 @@ pixi = require("pixi.js")
 Game = require('./game').Game
 
 document.addEventListener "DOMContentLoaded", ->
-  renderer = new pixi.WebGLRenderer(800, 600)
+  renderer = new pixi.WebGLRenderer(80 * 16, 40 * 16)
   document.body.appendChild renderer.view
   stage = new pixi.Stage
 
@@ -12,4 +12,4 @@ document.addEventListener "DOMContentLoaded", ->
     stage: stage
   )
 
-  requestAnimationFrame -> game.animate()
+  requestAnimationFrame -> game.draw()
