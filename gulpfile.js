@@ -62,7 +62,7 @@ gulp.task('watch', function () {
 
     gulp.watch('src/stylesheets/*.scss',['compass']);
 
-    gulp.watch('src/scripts/*.coffee',['coffee']);
+    gulp.watch('src/scripts/**/*.coffee',['coffee']);
 
     gulp.watch('src/*.jade',['templates']);
 
