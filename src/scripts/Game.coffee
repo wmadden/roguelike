@@ -7,6 +7,8 @@ FloorTextures = require('./tiles/dawnlike/Floor').FloorTextures
 WallTextures = require('./tiles/dawnlike/Wall').WallTextures
 
 class Game
+  scale: new pixi.Point(1,1)
+
   constructor: ({ @stage, @renderer }) ->
     @scheduler = new ROT.Scheduler.Simple()
     @engine = new ROT.Engine(@scheduler)
@@ -19,11 +21,22 @@ class Game
     freeTile = @level.freeTiles[0]
     @player = new Player(x: freeTile[0], y: freeTile[1])
 
+    @layers = {
+      level: new pixi.DisplayObjectContainer()
+      entities: new pixi.DisplayObjectContainer()
+    }
+    @rootDisplayObjectContainer = new pixi.DisplayObjectContainer()
+    @rootDisplayObjectContainer.addChild(@layers.level)
+    @rootDisplayObjectContainer.addChild(@layers.entities)
+    @rootDisplayObjectContainer.scale = @scale
+    @stage.addChild(@rootDisplayObjectContainer)
+
   load: ->
     @loadTextures().then =>
       @scheduler.add new WaitForPlayerInput(@rulesEngine, @player), true
       @engine.start()
       @drawLevel(@level)
+      @drawCreatures()
     .catch (error) ->
       console.error(error)
 
@@ -31,12 +44,12 @@ class Game
     new Promise (resolve, reject) =>
       FloorTextures.load()
 
-      WallTextures.load('rock/yellow-light').then( (wallTexture) =>
+      WallTextures.load('brick/light').then( (wallTexture) =>
         @wallTexture = wallTexture
         resolve()
       , reject)
 
-      @floorTextureMap = FloorTextures.floorTypes.planks.brown
+      @floorTextureMap = FloorTextures.floorTypes.bricks.grey
       humanoidTexture = pixi.Texture.fromImage("images/dawnlike/Characters/Humanoid0.png")
       @playerTexture = new pixi.Texture(
         humanoidTexture,
@@ -62,12 +75,10 @@ class Game
   wallSprite: (x, y) ->
     tile = @level.tiles[x][y]
     textureName = "#{if tile.north == 'wall' then 'N' else '_'}#{if tile.east is "wall" then "E" else "_"}#{if tile.south is "wall" then "S" else "_"}#{if tile.west is "wall" then "W" else "_"}"
-    if not @wallTexture[textureName]?
-      console.log "No such wall texture: #{textureName} (#{x}, #{y})"
-      return
     sprite = new pixi.Sprite(
       @wallTexture[textureName]
     )
+
     sprite.x = x * 16
     sprite.y = y * 16
     sprite
@@ -77,13 +88,14 @@ class Game
       for y in [0..@level.height]
         switch @level.tiles[x][y]?.type
           when 'floor'
-            @stage.addChild @floorSprite(x, y)
+            @layers.level.addChild @floorSprite(x, y)
           when 'wall'
             wallSprite = @wallSprite(x, y)
-            @stage.addChild wallSprite if wallSprite?
+            @layers.level.addChild wallSprite if wallSprite?
 
+  drawCreatures: ->
     @player.sprite = new pixi.Sprite(@playerTexture)
-    @stage.addChild(@player.sprite)
+    @layers.entities.addChild(@player.sprite)
 
 class RulesEngine
   constructor: (@level) ->
