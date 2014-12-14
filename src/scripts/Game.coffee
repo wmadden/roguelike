@@ -3,6 +3,8 @@ ROT = require('rot-js').ROT
 Level = require('./Level').Level
 Player = require('./Player').Player
 Promise = require('es6-promise').Promise
+FloorTextures = require('./tiles/dawnlike/Floor').FloorTextures
+WallTextures = require('./tiles/dawnlike/Wall').WallTextures
 
 class Game
   constructor: ({ @stage, @renderer }) ->
@@ -48,13 +50,24 @@ class Game
     return
 
   floorSprite: (x, y) ->
-    sprite = new pixi.Sprite(@floorTileTexture)
+    tile = @level.tiles[x][y]
+    sprite = new pixi.Sprite(
+      @floorTextureMap[ tile.north ][ tile.east ][ tile.south ][ tile.west ]
+    )
+
     sprite.x = x * 16
     sprite.y = y * 16
     sprite
 
   wallSprite: (x, y) ->
-    sprite = new pixi.Sprite(@wallTileTexture)
+    tile = @level.tiles[x][y]
+    textureName = "#{if tile.north == 'wall' then 'N' else '_'}#{if tile.east is "wall" then "E" else "_"}#{if tile.south is "wall" then "S" else "_"}#{if tile.west is "wall" then "W" else "_"}"
+    if not @wallTexture[textureName]?
+      console.log "No such wall texture: #{textureName} (#{x}, #{y})"
+      return
+    sprite = new pixi.Sprite(
+      @wallTexture[textureName]
+    )
     sprite.x = x * 16
     sprite.y = y * 16
     sprite
@@ -62,12 +75,12 @@ class Game
   drawLevel: (level) ->
     for x in [0..@level.width]
       for y in [0..@level.height]
-        switch @level.tiles[x][y]
-          when 0
+        switch @level.tiles[x][y]?.type
+          when 'floor'
             @stage.addChild @floorSprite(x, y)
-          when 1
-            #@stage.addChild @wallSprite(x, y)
-            continue
+          when 'wall'
+            wallSprite = @wallSprite(x, y)
+            @stage.addChild wallSprite if wallSprite?
 
     @player.sprite = new pixi.Sprite(@playerTexture)
     @stage.addChild(@player.sprite)
@@ -77,11 +90,11 @@ class RulesEngine
   step: ({ actor, direction }) ->
     movementDiff = ROT.DIRS[8][direction]
     [xDiff, yDiff] = movementDiff
-    destination = [actor.x + xDiff, actor.y + yDiff]
-    destinationTile = @level.tiles[destination[0]][destination[1]]
-    if destinationTile == 0
-      actor.x = destination[0]
-      actor.y = destination[1]
+    [destX, destY] = [actor.x + xDiff, actor.y + yDiff]
+    destinationTile = @level.tiles[destX][destY]
+    if destinationTile?.type == 'floor'
+      actor.x = destX
+      actor.y = destY
       true
     else
       false
