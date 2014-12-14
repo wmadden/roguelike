@@ -16,7 +16,11 @@ class Game
     @level = new Level(width: 80, height: 40)
     @level.generate()
 
-    @rulesEngine = new RulesEngine(@level)
+    @thingsHaveChanged = true
+    @rulesEngine = new RulesEngine(@level, =>
+      @thingsHaveChanged = true
+      @updateLayers()
+    )
 
     freeTile = @level.freeTiles[0]
     @player = new Player(x: freeTile[0], y: freeTile[1])
@@ -56,10 +60,19 @@ class Game
         new pixi.Rectangle(16 * 0, 16 * 7, 16, 16)
       )
 
+  updateLayers: ->
+    @clearLayers()
+    @drawCreatures()
+    @drawLevel()
+
+  clearLayers: ->
+    for name, layer of @layers
+      layer.removeChildren()
+
   draw: ->
-    @player.sprite.x = 16 * @player.x
-    @player.sprite.y = 16 * @player.y
+    return unless @thingsHaveChanged
     @renderer.render @stage
+    @thingsHaveChanged = false
     return
 
   floorSprite: (x, y) ->
@@ -83,22 +96,27 @@ class Game
     sprite.y = y * 16
     sprite
 
+  drawTile: (x, y) ->
+    switch @level.tiles[x][y]?.type
+      when 'floor'
+        @layers.level.addChild @floorSprite(x, y)
+      when 'wall'
+        wallSprite = @wallSprite(x, y)
+        @layers.level.addChild wallSprite if wallSprite?
+
   drawLevel: (level) ->
     for x in [0..@level.width]
       for y in [0..@level.height]
-        switch @level.tiles[x][y]?.type
-          when 'floor'
-            @layers.level.addChild @floorSprite(x, y)
-          when 'wall'
-            wallSprite = @wallSprite(x, y)
-            @layers.level.addChild wallSprite if wallSprite?
+        @drawTile(x, y)
 
   drawCreatures: ->
     @player.sprite = new pixi.Sprite(@playerTexture)
+    @player.sprite.x = 16 * @player.x
+    @player.sprite.y = 16 * @player.y
     @layers.entities.addChild(@player.sprite)
 
 class RulesEngine
-  constructor: (@level) ->
+  constructor: (@level, @thingsChangedCallback) ->
   step: ({ actor, direction }) ->
     movementDiff = ROT.DIRS[8][direction]
     [xDiff, yDiff] = movementDiff
@@ -107,9 +125,12 @@ class RulesEngine
     if destinationTile?.type == 'floor'
       actor.x = destX
       actor.y = destY
+      @thingsChangedCallback()
       true
     else
       false
+  lightPassesThrough: (x, y) ->
+    @level.tiles[x][y].type == 'floor'
 
 class Schedulable
   act: -> Promise.resolve()
