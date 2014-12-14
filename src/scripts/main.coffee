@@ -12,4 +12,8 @@ document.addEventListener "DOMContentLoaded", ->
     stage: stage
   )
 
-  requestAnimationFrame -> game.draw()
+  game.load().then ->
+    drawLoop = ->
+      game.draw()
+      requestAnimationFrame(drawLoop)
+    drawLoop()

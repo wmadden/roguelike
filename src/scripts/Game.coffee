@@ -45,7 +45,6 @@ class Game
     @player.sprite.x = 16 * @player.x
     @player.sprite.y = 16 * @player.y
     @renderer.render @stage
-    requestAnimationFrame => @draw()
     return
 
   floorSprite: (x, y) ->
