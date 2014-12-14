@@ -41,7 +41,6 @@ class WallTextureVariant
       textureId = "#{textureName}.png"
       this[textureName] = pixi.TextureCache[textureId]
       pixi.Texture.removeTextureFromCache(textureId)
-      # delete pixi.TextureCache[textureId]
     @___W = @_E_W
     @_E__ = @_E_W
     @__S_ = @N_S_
