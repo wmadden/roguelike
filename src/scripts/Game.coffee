@@ -122,6 +122,7 @@ class WaitForPlayerInput extends Schedulable
       keydownHandler = (event) =>
         code = event.keyCode
         return unless code of @KEYMAP
+        event.preventDefault()
 
         direction = @KEYMAP[code]
         if @rulesEngine.step( actor: @player, direction: direction )
