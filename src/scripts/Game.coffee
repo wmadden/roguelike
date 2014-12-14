@@ -16,29 +16,30 @@ class Game
 
     freeTile = @level.freeTiles[0]
     @player = new Player(x: freeTile[0], y: freeTile[1])
-    console.log 'player x:', @player.x, 'player y:', @player.y
 
-    @loadTextures()
-    @drawLevel(@level)
-
-    @scheduler.add new WaitForPlayerInput(@rulesEngine, @player), true
-    @engine.start()
+  load: ->
+    @loadTextures().then =>
+      @scheduler.add new WaitForPlayerInput(@rulesEngine, @player), true
+      @engine.start()
+      @drawLevel(@level)
+    .catch (error) ->
+      console.error(error)
 
   loadTextures: ->
-    @floorTexture = pixi.Texture.fromImage("images/dawnlike/Objects/Floor.png")
-    @floorTileTexture = new pixi.Texture(
-      @floorTexture,
-      new pixi.Rectangle(16 * 1, 16 * 7, 16, 16)
-    )
-    @wallTileTexture = new pixi.Texture(
-      @floorTexture,
-      new pixi.Rectangle(16 * 0, 16 * 7, 16, 16)
-    )
-    humanoidTexture = pixi.Texture.fromImage("images/dawnlike/Characters/Humanoid0.png")
-    @playerTexture = new pixi.Texture(
-      humanoidTexture,
-      new pixi.Rectangle(16 * 0, 16 * 7, 16, 16)
-    )
+    new Promise (resolve, reject) =>
+      FloorTextures.load()
+
+      WallTextures.load('rock/yellow-light').then( (wallTexture) =>
+        @wallTexture = wallTexture
+        resolve()
+      , reject)
+
+      @floorTextureMap = FloorTextures.floorTypes.planks.brown
+      humanoidTexture = pixi.Texture.fromImage("images/dawnlike/Characters/Humanoid0.png")
+      @playerTexture = new pixi.Texture(
+        humanoidTexture,
+        new pixi.Rectangle(16 * 0, 16 * 7, 16, 16)
+      )
 
   draw: ->
     @player.sprite.x = 16 * @player.x
