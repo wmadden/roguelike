@@ -1,0 +1,25 @@
+/* line 1, ../../src/stylesheets/main.scss */
+body, * {
+  font-family: sans-serif;
+  background: #283772;
+}
+
+/* line 5, ../../src/stylesheets/main.scss */
+.container {
+  width: 400px;
+  height: auto;
+  border: 1px solid #ccc;
+  background: #fff;
+  box-shadow: 1px 1px 1px black;
+  border-radius: 3px;
+  margin: 0 auto;
+  padding: 35px;
+}
+/* line 10, ../../src/stylesheets/main.scss */
+.container * {
+  background: #fff;
+}
+/* line 18, ../../src/stylesheets/main.scss */
+.container h1 {
+  text-align: center;
+}
