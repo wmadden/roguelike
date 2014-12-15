@@ -105,9 +105,10 @@ class Game
         @layers.level.addChild wallSprite if wallSprite?
 
   drawLevel: (level) ->
-    for x in [0..@level.width]
-      for y in [0..@level.height]
-        @drawTile(x, y)
+    fov = new ROT.FOV.PreciseShadowcasting((x, y) => @rulesEngine.lightPasses(x, y))
+    fov.compute( @player.x, @player.y, 15, (x, y, r, visibility) =>
+      @drawTile(x, y)
+    )
 
   drawCreatures: ->
     @player.sprite = new pixi.Sprite(@playerTexture)
@@ -129,8 +130,8 @@ class RulesEngine
       true
     else
       false
-  lightPassesThrough: (x, y) ->
-    @level.tiles[x][y].type == 'floor'
+  lightPasses: (x, y) ->
+    @level.tiles[x]?[y]?.type == 'floor'
 
 class Schedulable
   act: -> Promise.resolve()
