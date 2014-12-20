@@ -8,12 +8,13 @@ document.addEventListener "DOMContentLoaded", ->
   stage = new pixi.Stage
 
   game = new Game(
-    renderer: renderer,
+    pixiRenderer: renderer,
     stage: stage
   )
 
-  game.load().then ->
-    drawLoop = ->
-      game.draw()
-      requestAnimationFrame(drawLoop)
-    drawLoop()
+  game.load()
+
+  drawLoop = ->
+    game.draw()
+    requestAnimationFrame(drawLoop)
+  drawLoop()

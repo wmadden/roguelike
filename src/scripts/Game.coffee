@@ -3,143 +3,60 @@ ROT = require('rot-js').ROT
 Level = require('./Level').Level
 Player = require('./Player').Player
 Promise = require('es6-promise').Promise
-FloorTextures = require('./tiles/dawnlike/Floor').FloorTextures
-WallTextures = require('./tiles/dawnlike/Wall').WallTextures
+
+Renderer = require('./Renderer').Renderer
 SightMap = require('./SightMap').SightMap
 
-PREVIOUSLY_SEEN = 'previouslySeen'
-CURRENTLY_VISIBLE = 'currentlyVisible'
-
 class Game
-  scale: new pixi.Point(1,1)
-
-  constructor: ({ @stage, @renderer }) ->
+  constructor: ({ @stage, @pixiRenderer }) ->
     @scheduler = new ROT.Scheduler.Simple()
     @engine = new ROT.Engine(@scheduler)
 
     @level = new Level(width: 80, height: 40)
     @level.generate()
 
-    @thingsHaveChanged = true
-    @rulesEngine = new RulesEngine(@level, =>
-      @thingsHaveChanged = true
-      @updateLayers()
-    )
+    @rulesEngine = new RulesEngine(@level)
 
     freeTile = @level.freeTiles[0]
     @player = new Player(x: freeTile[0], y: freeTile[1])
     @player.sightMap = new SightMap(width: @level.width, height: @level.height)
 
-    @layers = {
-      level: new pixi.DisplayObjectContainer()
-      entities: new pixi.DisplayObjectContainer()
-    }
-    @rootDisplayObjectContainer = new pixi.DisplayObjectContainer()
-    @rootDisplayObjectContainer.addChild(@layers.level)
-    @rootDisplayObjectContainer.addChild(@layers.entities)
-    @rootDisplayObjectContainer.scale = @scale
-    @stage.addChild(@rootDisplayObjectContainer)
+    @renderer = new Renderer({ @stage, @level, @player })
 
   load: ->
-    @loadTextures().then =>
-      @scheduler.add(
-        new Schedulable( =>
-          @rulesEngine.updateSightmap(@player)
-          Promise.resolve()
-        )
-        , true
-      )
-      @scheduler.add(
-        new WaitForPlayerInput(@rulesEngine, @player)
-        , true
-      )
+    # First time only
+    @schedule => @renderer.loadTextures()
+    @schedule => @needsRedraw = true
 
-      @engine.start()
-      @drawLevel(@level)
-      @drawCreatures()
-    .catch (error) ->
-      console.error(error)
+    # Every time
+    @schedule =>
+      @rulesEngine.updateSightmap(@player)
+    , repeat: true
+    @schedule new WaitForPlayerInput(@rulesEngine, @player), repeat: true
+    @schedule =>
+      @needsRedraw = true
+    , repeat: true
 
-  loadTextures: ->
-    new Promise (resolve, reject) =>
-      FloorTextures.load()
+    @engine.start()
 
-      WallTextures.load('brick/light').then( (wallTexture) =>
-        @wallTexture = wallTexture
-        resolve()
-      , reject)
-
-      @floorTextureMap = FloorTextures.floorTypes.bricks.grey
-      humanoidTexture = pixi.Texture.fromImage("images/dawnlike/Characters/Humanoid0.png")
-      @playerTexture = new pixi.Texture(
-        humanoidTexture,
-        new pixi.Rectangle(16 * 0, 16 * 7, 16, 16)
-      )
-
-  updateLayers: ->
-    @clearLayers()
-    @drawCreatures()
-    @drawLevel()
-
-  clearLayers: ->
-    for name, layer of @layers
-      layer.removeChildren()
+  schedule: (action, options = {}) ->
+    if typeof action is 'function'
+      schedulable = new Schedulable(action)
+    else
+      schedulable = action
+    unless schedulable instanceof Schedulable
+      throw new Error("Don't know how to schedule #{action}")
+    @scheduler.add(schedulable, options.repeat)
 
   draw: ->
-    return unless @thingsHaveChanged
-    @renderer.render @stage
-    @thingsHaveChanged = false
+    return unless @needsRedraw
+    @renderer.update()
+    @pixiRenderer.render @stage
+    @needsRedraw = false
     return
 
-  floorSprite: (x, y) ->
-    tile = @level.tiles[x][y]
-    sprite = new pixi.Sprite(
-      @floorTextureMap[ tile.north ][ tile.east ][ tile.south ][ tile.west ]
-    )
-
-    sprite.x = x * 16
-    sprite.y = y * 16
-    sprite
-
-  wallSprite: (x, y) ->
-    tile = @level.tiles[x][y]
-    textureName = "#{if tile.north == 'wall' then 'N' else '_'}#{if tile.east is "wall" then "E" else "_"}#{if tile.south is "wall" then "S" else "_"}#{if tile.west is "wall" then "W" else "_"}"
-    sprite = new pixi.Sprite(
-      @wallTexture[textureName]
-    )
-
-    sprite.x = x * 16
-    sprite.y = y * 16
-    sprite
-
-  drawTile: (x, y, visibility) ->
-    switch @level.tiles[x][y]?.type
-      when 'floor'
-        tile = @floorSprite(x, y)
-      when 'wall'
-        wallSprite = @wallSprite(x, y)
-        tile = wallSprite if wallSprite?
-    return unless tile # TODO: Do we really need this check?
-    if visibility == PREVIOUSLY_SEEN
-      tile.alpha = 0.5
-    else
-      tile.alpha = 1.0
-    @layers.level.addChild tile
-
-  drawLevel: (level) ->
-    for {x, y} in @player.sightMap.visibleTiles
-      @drawTile(x, y, CURRENTLY_VISIBLE)
-    for {x, y} in @player.sightMap.seenTiles
-      @drawTile(x, y, PREVIOUSLY_SEEN) unless @player.sightMap.isVisible({x, y})
-
-  drawCreatures: ->
-    @player.sprite = new pixi.Sprite(@playerTexture)
-    @player.sprite.x = 16 * @player.x
-    @player.sprite.y = 16 * @player.y
-    @layers.entities.addChild(@player.sprite)
-
 class RulesEngine
-  constructor: (@level, @thingsChangedCallback) ->
+  constructor: (@level) ->
   step: ({ actor, direction }) ->
     movementDiff = ROT.DIRS[8][direction]
     [xDiff, yDiff] = movementDiff
@@ -148,7 +65,6 @@ class RulesEngine
     if destinationTile?.type == 'floor'
       actor.x = destX
       actor.y = destY
-      @thingsChangedCallback()
       true
     else
       false
