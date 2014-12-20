@@ -5,6 +5,10 @@ Player = require('./Player').Player
 Promise = require('es6-promise').Promise
 FloorTextures = require('./tiles/dawnlike/Floor').FloorTextures
 WallTextures = require('./tiles/dawnlike/Wall').WallTextures
+SightMap = require('./SightMap').SightMap
+
+PREVIOUSLY_SEEN = 'previouslySeen'
+CURRENTLY_VISIBLE = 'currentlyVisible'
 
 class Game
   scale: new pixi.Point(1,1)
@@ -24,6 +28,7 @@ class Game
 
     freeTile = @level.freeTiles[0]
     @player = new Player(x: freeTile[0], y: freeTile[1])
+    @player.sightMap = new SightMap(width: @level.width, height: @level.height)
 
     @layers = {
       level: new pixi.DisplayObjectContainer()
@@ -37,7 +42,18 @@ class Game
 
   load: ->
     @loadTextures().then =>
-      @scheduler.add new WaitForPlayerInput(@rulesEngine, @player), true
+      @scheduler.add(
+        new Schedulable( =>
+          @rulesEngine.updateSightmap(@player)
+          Promise.resolve()
+        )
+        , true
+      )
+      @scheduler.add(
+        new WaitForPlayerInput(@rulesEngine, @player)
+        , true
+      )
+
       @engine.start()
       @drawLevel(@level)
       @drawCreatures()
@@ -96,19 +112,25 @@ class Game
     sprite.y = y * 16
     sprite
 
-  drawTile: (x, y) ->
+  drawTile: (x, y, visibility) ->
     switch @level.tiles[x][y]?.type
       when 'floor'
-        @layers.level.addChild @floorSprite(x, y)
+        tile = @floorSprite(x, y)
       when 'wall'
         wallSprite = @wallSprite(x, y)
-        @layers.level.addChild wallSprite if wallSprite?
+        tile = wallSprite if wallSprite?
+    return unless tile # TODO: Do we really need this check?
+    if visibility == PREVIOUSLY_SEEN
+      tile.alpha = 0.5
+    else
+      tile.alpha = 1.0
+    @layers.level.addChild tile
 
   drawLevel: (level) ->
-    fov = new ROT.FOV.PreciseShadowcasting((x, y) => @rulesEngine.lightPasses(x, y))
-    fov.compute( @player.x, @player.y, 15, (x, y, r, visibility) =>
-      @drawTile(x, y)
-    )
+    for {x, y} in @player.sightMap.visibleTiles
+      @drawTile(x, y, CURRENTLY_VISIBLE)
+    for {x, y} in @player.sightMap.seenTiles
+      @drawTile(x, y, PREVIOUSLY_SEEN) unless @player.sightMap.isVisible({x, y})
 
   drawCreatures: ->
     @player.sprite = new pixi.Sprite(@playerTexture)
@@ -132,8 +154,16 @@ class RulesEngine
       false
   lightPasses: (x, y) ->
     @level.tiles[x]?[y]?.type == 'floor'
+  updateSightmap: (entity) ->
+    fov = new ROT.FOV.PreciseShadowcasting((x, y) => @lightPasses(x, y))
+    entity.sightMap.clearVisible()
+    fov.compute( entity.x, entity.y, entity.sightRadius, (x, y, r, visibility) ->
+      entity.sightMap.markAsVisible {x, y}
+    )
 
 class Schedulable
+  constructor: (act = null) ->
+    @act = act if act?
   act: -> Promise.resolve()
 
 class WaitForPlayerInput extends Schedulable
