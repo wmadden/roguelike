@@ -5,6 +5,7 @@ Player = require('Player').Player
 Promise = require('es6-promise').Promise
 
 Renderer = require('drawing/Renderer').Renderer
+Entity = require('Entity').Entity
 SightMap = require('SightMap').SightMap
 
 class Game
@@ -17,17 +18,20 @@ class Game
 
     @rulesEngine = new RulesEngine(@level)
 
-    freeTile = @level.freeTiles[0]
+    freeTile = @level.freeTiles.pop()
     @player = new Player(x: freeTile[0], y: freeTile[1])
     @player.sightMap = new SightMap(width: @level.width, height: @level.height)
 
-    @renderer = new Renderer({ @stage, @level, @player })
+    @entities = []
+    @generateSomeTestEnemies()
+
+    @renderer = new Renderer({ @stage, game: this, scale: @scale })
 
   load: ->
     # First time only
     @schedule => @renderer.loadTextures()
 
-    # Every time
+    # Every tick
     @schedule =>
       @rulesEngine.updateSightmap(@player)
     , repeat: true
@@ -60,6 +64,17 @@ class Game
     else if @needsRedraw
       @pixiRenderer.render @stage
       @needsRedraw = false
+
+  generateSomeTestEnemies: ->
+    for i in [0..10]
+      index = Math.floor(Math.random() * (@level.freeTiles.length))
+      freeTile = @level.freeTiles[index]
+      @level.freeTiles.splice(index, 1)
+      @entities.push(new Entity({
+        type: 'bunny-brown'
+        x: freeTile[0]
+        y: freeTile[1]
+      }))
 
 class RulesEngine
   constructor: (@level) ->
