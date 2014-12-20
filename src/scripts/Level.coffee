@@ -1,5 +1,6 @@
 Array2D = require('./util/Array2D')
 ROT = require('rot-js').ROT
+_ = require('underscore')
 
 WALL = 1
 FLOOR = 0
@@ -8,6 +9,7 @@ class Level
   constructor: ({ @width, @height }) ->
     @freeTiles = []
     @tiles = Array2D.create(@width, @height)
+    @entities = []
 
   generate: ->
     tiles = Array2D.create(@width, @height)
@@ -93,6 +95,9 @@ class Level
   wallContinuesEast: (tiles, x, y) ->
     return false if x == @width
     tiles[x+1][y] == 1 && @adjacentFloorTile(tiles, x+1, y)
+
+  entityAt: (x, y) ->
+    _(@entities).find (entity) -> entity.x == x && entity.y == y
 
 
 class Tile

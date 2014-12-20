@@ -3,6 +3,7 @@ ROT = require('rot-js').ROT
 Level = require('Level').Level
 Player = require('Player').Player
 Promise = require('es6-promise').Promise
+_ = require('underscore')
 
 Renderer = require('drawing/Renderer').Renderer
 Entity = require('Entity').Entity
@@ -22,7 +23,6 @@ class Game
     @player = new Player(x: freeTile[0], y: freeTile[1])
     @player.sightMap = new SightMap(width: @level.width, height: @level.height)
 
-    @entities = []
     @generateSomeTestEnemies()
 
     @renderer = new Renderer({ @stage, game: this, scale: @scale })
@@ -44,7 +44,10 @@ class Game
       new Promise (resolve, reject) =>
         @renderer.once('animationsComplete', resolve)
     , repeat: true
-    @schedule new WaitForPlayerInput(@rulesEngine, @player), repeat: true
+    @schedule =>
+      @clearDeadEntities()
+    , repeat: true
+    @schedule new WaitForPlayerInput(@rulesEngine, @level, @player), repeat: true
 
     @engine.start()
 
@@ -70,19 +73,21 @@ class Game
       index = Math.floor(Math.random() * (@level.freeTiles.length))
       freeTile = @level.freeTiles[index]
       @level.freeTiles.splice(index, 1)
-      @entities.push(new Entity({
+      @level.entities.push(new Entity({
         type: 'bunny-brown'
         x: freeTile[0]
         y: freeTile[1]
       }))
 
+  clearDeadEntities: ->
+    @level.entities = _(@level.entities).filter (entity) -> !entity.dead
+
 class RulesEngine
   constructor: (@level) ->
   step: ({ actor, direction }) ->
-    movementDiff = ROT.DIRS[8][direction]
-    [xDiff, yDiff] = movementDiff
-    [destX, destY] = [actor.x + xDiff, actor.y + yDiff]
+    [destX, destY] = @getDestination(actor, direction)
     destinationTile = @level.tiles[destX][destY]
+
     if destinationTile?.type == 'floor'
       actor.x = destX
       actor.y = destY
@@ -97,6 +102,15 @@ class RulesEngine
     fov.compute( entity.x, entity.y, entity.sightRadius, (x, y, r, visibility) ->
       entity.sightMap.markAsVisible {x, y}
     )
+  attack: ({ actor, direction }) ->
+    coords = @getDestination(actor, direction)
+    targetEntity = @level.entityAt(coords...)
+    targetEntity.dead = true
+
+  getDestination: (actor, direction) ->
+    movementDiff = ROT.DIRS[8][direction]
+    [xDiff, yDiff] = movementDiff
+    [actor.x + xDiff, actor.y + yDiff]
 
 class Schedulable
   constructor: (act = null) ->
@@ -116,7 +130,7 @@ class WaitForPlayerInput extends Schedulable
     36: 7
   }
 
-  constructor: (@rulesEngine, @player) ->
+  constructor: (@rulesEngine, @level, @player) ->
 
   act: ->
     new Promise (resolve, reject) =>
@@ -126,7 +140,16 @@ class WaitForPlayerInput extends Schedulable
         event.preventDefault()
 
         direction = @KEYMAP[code]
-        if @rulesEngine.step( actor: @player, direction: direction )
+
+        movementDiff = ROT.DIRS[8][direction]
+        [xDiff, yDiff] = movementDiff
+        [destX, destY] = [@player.x + xDiff, @player.y + yDiff]
+        entityOnTile = @level.entityAt(destX, destY)
+
+        if entityOnTile?
+          @rulesEngine.attack( actor: @player, direction: direction )
+          resolve()
+        else if @rulesEngine.step( actor: @player, direction: direction )
           window.removeEventListener('keydown', keydownHandler)
           resolve()
 

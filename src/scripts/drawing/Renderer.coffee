@@ -138,22 +138,30 @@ class module.exports.Renderer extends events.EventEmitter
     , ANIMATION_DURATION)
     @layers.entities.addChild(@game.player.sprite)
 
-    for entity in @game.entities
+    for entity in @game.level.entities
       unless entity.sprite
         entity.sprite = @getCreatureSprite(entity.type)
         entity.sprite.x = 16 * entity.x
         entity.sprite.y = 16 * entity.y
         entity.sprite.alpha = 0
 
-      if @game.player.sightMap.isVisible(x: entity.x, y: entity.y)
-        alpha = 1
+      if entity.dead
+        # Death animation
+        @queueAnimation animation.transition(entity.sprite,
+          x: 16 * entity.x
+          y: 16 * entity.y
+          alpha: 0
+        , ANIMATION_DURATION)
       else
-        alpha = 0
+        if @game.player.sightMap.isVisible(x: entity.x, y: entity.y)
+          alpha = 1
+        else
+          alpha = 0
 
-      @queueAnimation animation.transition(entity.sprite,
-        x: 16 * entity.x
-        y: 16 * entity.y
-        alpha: alpha
-      , ANIMATION_DURATION)
+        @queueAnimation animation.transition(entity.sprite,
+          x: 16 * entity.x
+          y: 16 * entity.y
+          alpha: alpha
+        , ANIMATION_DURATION)
 
       @layers.entities.addChild(entity.sprite)
