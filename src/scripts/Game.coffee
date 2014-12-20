@@ -17,11 +17,11 @@ class Game
     @level = new Level(width: 80, height: 40)
     @level.generate()
 
-    @rulesEngine = new RulesEngine(@level)
-
     freeTile = @level.freeTiles.pop()
     @player = new Player(x: freeTile[0], y: freeTile[1])
     @player.sightMap = new SightMap(width: @level.width, height: @level.height)
+
+    @rulesEngine = new RulesEngine(@level, @player)
 
     @generateSomeTestEnemies()
 
@@ -48,6 +48,10 @@ class Game
       @clearDeadEntities()
     , repeat: true
     @schedule new WaitForPlayerInput(@rulesEngine, @level, @player), repeat: true
+    @schedule =>
+      for entity in @level.entities
+        entity.act() unless entity.dead
+    , repeat: true
 
     @engine.start()
 
@@ -77,23 +81,26 @@ class Game
         type: 'bunny-brown'
         x: freeTile[0]
         y: freeTile[1]
+        rulesEngine: @rulesEngine
       }))
 
   clearDeadEntities: ->
     @level.entities = _(@level.entities).filter (entity) -> !entity.dead
 
 class RulesEngine
-  constructor: (@level) ->
+  constructor: (@level, @player) ->
   step: ({ actor, direction }) ->
     [destX, destY] = @getDestination(actor, direction)
-    destinationTile = @level.tiles[destX][destY]
-
-    if destinationTile?.type == 'floor'
+    if @canOccupy(destX, destY)
       actor.x = destX
       actor.y = destY
       true
     else
       false
+  canOccupy: (x, y) ->
+    destinationTile = @level.tiles[x][y]
+    destinationTile?.type == 'floor' && not @level.entityAt(x, y)? &&
+      not (@player.x == x && @player.y == y)
   lightPasses: (x, y) ->
     @level.tiles[x]?[y]?.type == 'floor'
   updateSightmap: (entity) ->
