@@ -1,3 +1,4 @@
+Array2D = require('./util/Array2D')
 ROT = require('rot-js').ROT
 
 WALL = 1
@@ -6,10 +7,10 @@ FLOOR = 0
 class Level
   constructor: ({ @width, @height }) ->
     @freeTiles = []
-    @tiles = create2DArray(@width, @height)
+    @tiles = Array2D.create(@width, @height)
 
   generate: ->
-    tiles = create2DArray(@width, @height)
+    tiles = Array2D.create(@width, @height)
     callback = (x, y, wall) =>
       tiles[x][y] ?= []
       tiles[x][y] = wall #if wall then WALL else FLOOR
@@ -96,11 +97,5 @@ class Level
 
 class Tile
   constructor: (@type) ->
-
-create2DArray = (width, height) ->
-  tiles = []
-  for i in [0..width]
-    tiles[i] = new Array(height)
-  tiles
 
 module.exports.Level = Level
