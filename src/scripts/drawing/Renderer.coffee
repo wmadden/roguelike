@@ -1,6 +1,6 @@
 pixi = require 'pixi.js'
-FloorTextures = require('./tiles/dawnlike/Floor').FloorTextures
-WallTextures = require('./tiles/dawnlike/Wall').WallTextures
+FloorTextures = require('../tiles/dawnlike/Floor').FloorTextures
+WallTextures = require('../tiles/dawnlike/Wall').WallTextures
 
 PREVIOUSLY_SEEN = 'previouslySeen'
 CURRENTLY_VISIBLE = 'currentlyVisible'

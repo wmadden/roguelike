@@ -4,7 +4,7 @@ Level = require('./Level').Level
 Player = require('./Player').Player
 Promise = require('es6-promise').Promise
 
-Renderer = require('./Renderer').Renderer
+Renderer = require('./drawing/Renderer').Renderer
 SightMap = require('./SightMap').SightMap
 
 class Game
