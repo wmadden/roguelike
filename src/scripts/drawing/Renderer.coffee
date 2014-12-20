@@ -3,10 +3,13 @@ pixi = require 'pixi.js'
 FloorTextures = require('tiles/dawnlike/Floor').FloorTextures
 WallTextures = require('tiles/dawnlike/Wall').WallTextures
 animation = require('./Animation')
+Array2D = require('util/Array2D')
 _ = require('underscore')
 
 PREVIOUSLY_SEEN = 'previouslySeen'
 CURRENTLY_VISIBLE = 'currentlyVisible'
+
+ANIMATION_DURATION = 50
 
 class module.exports.Renderer extends events.EventEmitter
   scale: new pixi.Point(1,1)
@@ -25,6 +28,8 @@ class module.exports.Renderer extends events.EventEmitter
 
     @stage.addChild(@rootDisplayObjectContainer)
 
+    @transitionLevel(@level)
+
   loadTextures: ->
     new Promise (resolve, reject) =>
       FloorTextures.load()
@@ -41,12 +46,17 @@ class module.exports.Renderer extends events.EventEmitter
         new pixi.Rectangle(16 * 0, 16 * 7, 16, 16)
       )
 
+  transitionLevel: (newLevel) ->
+    @level = newLevel
+    # TODO: transition between levels
+    @tiles = Array2D.create(@level.width, @level.height)
+
   clearLayers: ->
     for name, layer of @layers
       layer.removeChildren()
 
   update: ->
-    @clearLayers()
+    # @clearLayers()
     @drawCreatures()
     @drawLevel()
 
@@ -59,9 +69,6 @@ class module.exports.Renderer extends events.EventEmitter
       @emit('animationsComplete')
 
   queueAnimation: (animation) ->
-    # animation.once('complete', =>
-    #   @pendingAnimations = _(@pendingAnimations).without(animation)
-    # )
     @pendingAnimations.push animation
 
   floorSprite: (x, y) ->
@@ -86,18 +93,27 @@ class module.exports.Renderer extends events.EventEmitter
     sprite
 
   drawTile: (x, y, visibility) ->
-    switch @level.tiles[x][y]?.type
-      when 'floor'
-        tile = @floorSprite(x, y)
-      when 'wall'
-        wallSprite = @wallSprite(x, y)
-        tile = wallSprite if wallSprite?
-    return unless tile # TODO: Do we really need this check?
+    tile = @tiles[x][y]
+
+    if not tile?
+      switch @level.tiles[x][y]?.type
+        when 'floor'
+          tile = @floorSprite(x, y)
+        when 'wall'
+          wallSprite = @wallSprite(x, y)
+          tile = wallSprite if wallSprite?
+      tile.alpha = 0
+      @layers.level.addChild tile
+      @tiles[x][y] = tile
+
     if visibility == PREVIOUSLY_SEEN
-      tile.alpha = 0.5
+      @queueAnimation animation.transition(tile, {
+        alpha: 0.5
+      }, ANIMATION_DURATION)
     else
-      tile.alpha = 1.0
-    @layers.level.addChild tile
+      @queueAnimation animation.transition(tile, {
+        alpha: 1.0
+      }, ANIMATION_DURATION)
 
   drawLevel: (level) ->
     for {x, y} in @player.sightMap.visibleTiles
@@ -114,6 +130,6 @@ class module.exports.Renderer extends events.EventEmitter
       @queueAnimation animation.transition(@player.sprite,
         x: 16 * @player.x
         y: 16 * @player.y
-      , 30)
+      , ANIMATION_DURATION)
 
     @layers.entities.addChild(@player.sprite)
