@@ -2,6 +2,7 @@ events = require 'events'
 pixi = require 'pixi.js'
 FloorTextures = require('tiles/dawnlike/Floor').FloorTextures
 WallTextures = require('tiles/dawnlike/Wall').WallTextures
+CharacterTextures = require('tiles/dawnlike/Character').CharacterTextures
 animation = require('./Animation')
 Array2D = require('util/Array2D')
 _ = require('underscore')
@@ -9,11 +10,11 @@ _ = require('underscore')
 PREVIOUSLY_SEEN = 'previouslySeen'
 CURRENTLY_VISIBLE = 'currentlyVisible'
 
-ANIMATION_DURATION = 50
+ANIMATION_DURATION = 100
 
 class module.exports.Renderer extends events.EventEmitter
   scale: new pixi.Point(1,1)
-  constructor: ({ @stage, @level, @player, scale })->
+  constructor: ({ @stage, @game, scale })->
     @pendingAnimations = []
     @scale = scale if scale?
     @layers = {
@@ -28,28 +29,28 @@ class module.exports.Renderer extends events.EventEmitter
 
     @stage.addChild(@rootDisplayObjectContainer)
 
-    @transitionLevel(@level)
+    @transitionLevel(@game.level)
 
   loadTextures: ->
-    new Promise (resolve, reject) =>
-      FloorTextures.load()
-
+    Promise.all([
+      FloorTextures.load(),
       WallTextures.load('brick/light').then( (wallTexture) =>
         @wallTexture = wallTexture
-        resolve()
-      , reject)
-
+      ),
+      CharacterTextures.load('rodent').then( (rodentTextures) =>
+        @rodentTextures = rodentTextures
+      )
+    ]).then =>
       @floorTextureMap = FloorTextures.floorTypes.bricks.grey
       humanoidTexture = pixi.Texture.fromImage("images/dawnlike/Characters/Humanoid0.png")
-      @playerTexture = new pixi.Texture(
+      @game.playerTexture = new pixi.Texture(
         humanoidTexture,
         new pixi.Rectangle(16 * 0, 16 * 7, 16, 16)
       )
 
   transitionLevel: (newLevel) ->
-    @level = newLevel
     # TODO: transition between levels
-    @tiles = Array2D.create(@level.width, @level.height)
+    @tiles = Array2D.create(@game.level.width, @game.level.height)
 
   clearLayers: ->
     for name, layer of @layers
@@ -72,7 +73,7 @@ class module.exports.Renderer extends events.EventEmitter
     @pendingAnimations.push animation
 
   floorSprite: (x, y) ->
-    tile = @level.tiles[x][y]
+    tile = @game.level.tiles[x][y]
     sprite = new pixi.Sprite(
       @floorTextureMap[ tile.north ][ tile.east ][ tile.south ][ tile.west ]
     )
@@ -82,7 +83,7 @@ class module.exports.Renderer extends events.EventEmitter
     sprite
 
   wallSprite: (x, y) ->
-    tile = @level.tiles[x][y]
+    tile = @game.level.tiles[x][y]
     textureName = "#{if tile.north == 'wall' then 'N' else '_'}#{if tile.east is "wall" then "E" else "_"}#{if tile.south is "wall" then "S" else "_"}#{if tile.west is "wall" then "W" else "_"}"
     sprite = new pixi.Sprite(
       @wallTexture[textureName]
@@ -96,7 +97,7 @@ class module.exports.Renderer extends events.EventEmitter
     tile = @tiles[x][y]
 
     if not tile?
-      switch @level.tiles[x][y]?.type
+      switch @game.level.tiles[x][y]?.type
         when 'floor'
           tile = @floorSprite(x, y)
         when 'wall'
@@ -116,20 +117,43 @@ class module.exports.Renderer extends events.EventEmitter
       }, ANIMATION_DURATION)
 
   drawLevel: (level) ->
-    for {x, y} in @player.sightMap.visibleTiles
+    for {x, y} in @game.player.sightMap.visibleTiles
       @drawTile(x, y, CURRENTLY_VISIBLE)
-    for {x, y} in @player.sightMap.seenTiles
-      @drawTile(x, y, PREVIOUSLY_SEEN) unless @player.sightMap.isVisible({x, y})
+    for {x, y} in @game.player.sightMap.seenTiles
+      @drawTile(x, y, PREVIOUSLY_SEEN) unless @game.player.sightMap.isVisible({x, y})
+
+  getCreatureSprite: (type) ->
+    new pixi.Sprite(@rodentTextures["#{type}_0"])
 
   drawCreatures: ->
-    unless @player.sprite?
-      @player.sprite = new pixi.Sprite(@playerTexture)
-      @player.sprite.x = 16 * @player.x
-      @player.sprite.y = 16 * @player.y
-    else
-      @queueAnimation animation.transition(@player.sprite,
-        x: 16 * @player.x
-        y: 16 * @player.y
+    unless @game.player.sprite?
+      @game.player.sprite = new pixi.Sprite(@game.playerTexture)
+      @game.player.sprite.x = 16 * @game.player.x
+      @game.player.sprite.y = 16 * @game.player.y
+
+    # Draw the player
+    @queueAnimation animation.transition(@game.player.sprite,
+      x: 16 * @game.player.x
+      y: 16 * @game.player.y
+    , ANIMATION_DURATION)
+    @layers.entities.addChild(@game.player.sprite)
+
+    for entity in @game.entities
+      unless entity.sprite
+        entity.sprite = @getCreatureSprite(entity.type)
+        entity.sprite.x = 16 * entity.x
+        entity.sprite.y = 16 * entity.y
+        entity.sprite.alpha = 0
+
+      if @game.player.sightMap.isVisible(x: entity.x, y: entity.y)
+        alpha = 1
+      else
+        alpha = 0
+
+      @queueAnimation animation.transition(entity.sprite,
+        x: 16 * entity.x
+        y: 16 * entity.y
+        alpha: alpha
       , ANIMATION_DURATION)
 
-    @layers.entities.addChild(@player.sprite)
+      @layers.entities.addChild(entity.sprite)
