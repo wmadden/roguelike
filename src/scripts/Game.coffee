@@ -1,11 +1,11 @@
 pixi = require 'pixi.js'
 ROT = require('rot-js').ROT
-Level = require('./Level').Level
-Player = require('./Player').Player
+Level = require('Level').Level
+Player = require('Player').Player
 Promise = require('es6-promise').Promise
 
-Renderer = require('./drawing/Renderer').Renderer
-SightMap = require('./SightMap').SightMap
+Renderer = require('drawing/Renderer').Renderer
+SightMap = require('SightMap').SightMap
 
 class Game
   constructor: ({ @stage, @pixiRenderer }) ->

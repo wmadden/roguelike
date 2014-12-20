@@ -25,7 +25,8 @@ gulp.task('coffee', function() {
       debug: true,
       insertGlobals: false,
       transform: ['coffeeify'],
-      extensions: ['.coffee']
+      extensions: ['.coffee'],
+      paths: ['./src/scripts', './node_modules']
     }))
     .pipe( $.rename('app.js') )
     .pipe( gulp.dest('dist/scripts') )
