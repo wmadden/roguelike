@@ -26,16 +26,21 @@ class Game
   load: ->
     # First time only
     @schedule => @renderer.loadTextures()
-    @schedule => @needsRedraw = true
 
     # Every time
     @schedule =>
       @rulesEngine.updateSightmap(@player)
     , repeat: true
-    @schedule new WaitForPlayerInput(@rulesEngine, @player), repeat: true
     @schedule =>
+      @renderer.update()
       @needsRedraw = true
     , repeat: true
+    @schedule =>
+      return if @renderer.pendingAnimations.length == 0
+      new Promise (resolve, reject) =>
+        @renderer.once('animationsComplete', resolve)
+    , repeat: true
+    @schedule new WaitForPlayerInput(@rulesEngine, @player), repeat: true
 
     @engine.start()
 
@@ -48,12 +53,13 @@ class Game
       throw new Error("Don't know how to schedule #{action}")
     @scheduler.add(schedulable, options.repeat)
 
-  draw: ->
-    return unless @needsRedraw
-    @renderer.update()
-    @pixiRenderer.render @stage
-    @needsRedraw = false
-    return
+  draw: (msElapsed) ->
+    if @renderer.pendingAnimations.length > 0
+      @renderer.updateAnimations(msElapsed)
+      @pixiRenderer.render @stage
+    else if @needsRedraw
+      @pixiRenderer.render @stage
+      @needsRedraw = false
 
 class RulesEngine
   constructor: (@level) ->

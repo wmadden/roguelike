@@ -1,13 +1,17 @@
+events = require 'events'
 pixi = require 'pixi.js'
 FloorTextures = require('tiles/dawnlike/Floor').FloorTextures
 WallTextures = require('tiles/dawnlike/Wall').WallTextures
+animation = require('./Animation')
+_ = require('underscore')
 
 PREVIOUSLY_SEEN = 'previouslySeen'
 CURRENTLY_VISIBLE = 'currentlyVisible'
 
-class module.exports.Renderer #extends events.EventEmitter
+class module.exports.Renderer extends events.EventEmitter
   scale: new pixi.Point(1,1)
   constructor: ({ @stage, @level, @player, scale })->
+    @pendingAnimations = []
     @scale = scale if scale?
     @layers = {
       level: new pixi.DisplayObjectContainer()
@@ -45,6 +49,20 @@ class module.exports.Renderer #extends events.EventEmitter
     @clearLayers()
     @drawCreatures()
     @drawLevel()
+
+  updateAnimations: (msElapsed) ->
+    @pendingAnimations = _(@pendingAnimations).filter (animation) ->
+      animation.update(msElapsed)
+      not animation.isComplete()
+
+    if @pendingAnimations.length == 0
+      @emit('animationsComplete')
+
+  queueAnimation: (animation) ->
+    # animation.once('complete', =>
+    #   @pendingAnimations = _(@pendingAnimations).without(animation)
+    # )
+    @pendingAnimations.push animation
 
   floorSprite: (x, y) ->
     tile = @level.tiles[x][y]
@@ -88,7 +106,14 @@ class module.exports.Renderer #extends events.EventEmitter
       @drawTile(x, y, PREVIOUSLY_SEEN) unless @player.sightMap.isVisible({x, y})
 
   drawCreatures: ->
-    @player.sprite = new pixi.Sprite(@playerTexture)
-    @player.sprite.x = 16 * @player.x
-    @player.sprite.y = 16 * @player.y
+    unless @player.sprite?
+      @player.sprite = new pixi.Sprite(@playerTexture)
+      @player.sprite.x = 16 * @player.x
+      @player.sprite.y = 16 * @player.y
+    else
+      @queueAnimation animation.transition(@player.sprite,
+        x: 16 * @player.x
+        y: 16 * @player.y
+      , 30)
+
     @layers.entities.addChild(@player.sprite)

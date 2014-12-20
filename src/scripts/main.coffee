@@ -14,7 +14,14 @@ document.addEventListener "DOMContentLoaded", ->
 
   game.load()
 
-  drawLoop = ->
-    game.draw()
+  previousTimestamp = 0
+  drawLoop = (timestamp) ->
+    msElapsed = timestamp - previousTimestamp
+    previousTimestamp = timestamp
+    game.draw(msElapsed)
     requestAnimationFrame(drawLoop)
-  drawLoop()
+
+  requestAnimationFrame( (timestamp) ->
+    previousTimestamp = timestamp
+    drawLoop(timestamp)
+  )
