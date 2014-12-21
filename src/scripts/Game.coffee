@@ -4,6 +4,7 @@ Level = require('Level').Level
 Player = require('Player').Player
 Promise = require('es6-promise').Promise
 _ = require('underscore')
+KeyboardJS = require('keyboardjs')
 
 Renderer = require('drawing/Renderer').Renderer
 RulesEngine = require('RulesEngine').RulesEngine
@@ -95,28 +96,36 @@ class Schedulable
   act: -> Promise.resolve()
 
 class WaitForPlayerInput extends Schedulable
-  KEYMAP: {
-    # Direction keys -> direction constants
-    38: 0
-    33: 1
-    39: 2
-    34: 3
-    40: 4
-    35: 5
-    37: 6
-    36: 7
+  N = 0
+  NE = 1
+  E = 2
+  SE = 3
+  S = 4
+  SW = 5
+  W = 6
+  NW = 7
+
+  keymap: {
+    h: W
+    j: S
+    k: N
+    l: E
+    y: NW
+    u: NE
+    b: SW
+    n: SE
+    left: W
+    right: E
+    up: N
+    down: S
   }
 
   constructor: (@rulesEngine, @level, @player) ->
 
   act: ->
     new Promise (resolve, reject) =>
-      keydownHandler = (event) =>
-        code = event.keyCode
-        return unless code of @KEYMAP
-        event.preventDefault()
-
-        direction = @KEYMAP[code]
+      keydownHandler = (event, keys, comboString) =>
+        direction = @keymap[comboString]
 
         movementDiff = ROT.DIRS[8][direction]
         [xDiff, yDiff] = movementDiff
@@ -125,12 +134,16 @@ class WaitForPlayerInput extends Schedulable
 
         if entityOnTile?
           @rulesEngine.attack( actor: @player, direction: direction )
-          window.removeEventListener('keydown', keydownHandler)
+          removeKeyHandlers()
           resolve()
         else if @rulesEngine.step( actor: @player, direction: direction )
-          window.removeEventListener('keydown', keydownHandler)
+          removeKeyHandlers()
           resolve()
 
-      window.addEventListener('keydown', keydownHandler)
+      keyBindings =
+        for keyCombo, direction of @keymap
+          KeyboardJS.on(keyCombo, keydownHandler)
+      removeKeyHandlers = ->
+        binding.clear() for binding in keyBindings
 
 module.exports.Game = Game
