@@ -30,9 +30,15 @@ class module.exports.RulesEngine
   attack: ({ actor, direction }) ->
     coords = @getDestination(actor, direction)
     targetEntity = @level.entityAt(coords...)
-    targetEntity.dead = true
+    inflictDamage(actor, targetEntity, 1)
 
   getDestination: (actor, direction) ->
     movementDiff = ROT.DIRS[8][direction]
     [xDiff, yDiff] = movementDiff
     [actor.x + xDiff, actor.y + yDiff]
+
+inflictDamage = (source, destination, damage) ->
+  destination.health -= damage
+  if destination.health <= 0
+    destination.health = 0
+    destination.dead = true
