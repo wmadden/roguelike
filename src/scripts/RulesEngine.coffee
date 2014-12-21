@@ -9,8 +9,7 @@ class module.exports.RulesEngine extends events.EventEmitter
   step: ({ actor, direction }) ->
     [destX, destY] = @getDestination(actor, direction)
     if @canOccupy(destX, destY)
-      actor.x = destX
-      actor.y = destY
+      @move(actor, [destX, destY])
       true
     else
       false
@@ -39,6 +38,12 @@ class module.exports.RulesEngine extends events.EventEmitter
     movementDiff = ROT.DIRS[8][direction]
     [xDiff, yDiff] = movementDiff
     [actor.x + xDiff, actor.y + yDiff]
+
+  move: (actor, destination) ->
+    [destX, destY] = destination
+    actor.x = destX
+    actor.y = destY
+    @emit('entity:moved', actor, destination)
 
   inflictDamage: (source, destination, damage) ->
     destination.health -= damage
