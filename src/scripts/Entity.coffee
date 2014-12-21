@@ -2,7 +2,9 @@ ROT = require('rot-js').ROT
 _ = require('underscore')
 
 class module.exports.Entity
-  constructor: ({ @type, @x, @y, @rulesEngine }) ->
+  constructor: ({ @type, @x, @y, @health, @rulesEngine }) ->
+
+  sightRadius: 10
 
   act: ->
     availableDirections = _(ROT.DIRS[8]).reduce (memo, movementDiff, i) =>

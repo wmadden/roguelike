@@ -1,10 +1,5 @@
-class Player
-  constructor: ({ @x, @y })->
+Entity = require('Entity').Entity
 
-  move: ({ x, y }) ->
-    @x += x
-    @y += y
-
-  sightRadius: 10
+class Player extends Entity
 
 module.exports.Player = Player
