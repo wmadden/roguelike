@@ -6,6 +6,7 @@ Promise = require('es6-promise').Promise
 _ = require('underscore')
 
 Renderer = require('drawing/Renderer').Renderer
+RulesEngine = require('RulesEngine').RulesEngine
 Entity = require('Entity').Entity
 SightMap = require('SightMap').SightMap
 
@@ -86,38 +87,6 @@ class Game
 
   clearDeadEntities: ->
     @level.entities = _(@level.entities).filter (entity) -> !entity.dead
-
-class RulesEngine
-  constructor: (@level, @player) ->
-  step: ({ actor, direction }) ->
-    [destX, destY] = @getDestination(actor, direction)
-    if @canOccupy(destX, destY)
-      actor.x = destX
-      actor.y = destY
-      true
-    else
-      false
-  canOccupy: (x, y) ->
-    destinationTile = @level.tiles[x][y]
-    destinationTile?.type == 'floor' && not @level.entityAt(x, y)? &&
-      not (@player.x == x && @player.y == y)
-  lightPasses: (x, y) ->
-    @level.tiles[x]?[y]?.type == 'floor'
-  updateSightmap: (entity) ->
-    fov = new ROT.FOV.PreciseShadowcasting((x, y) => @lightPasses(x, y))
-    entity.sightMap.clearVisible()
-    fov.compute( entity.x, entity.y, entity.sightRadius, (x, y, r, visibility) ->
-      entity.sightMap.markAsVisible {x, y}
-    )
-  attack: ({ actor, direction }) ->
-    coords = @getDestination(actor, direction)
-    targetEntity = @level.entityAt(coords...)
-    targetEntity.dead = true
-
-  getDestination: (actor, direction) ->
-    movementDiff = ROT.DIRS[8][direction]
-    [xDiff, yDiff] = movementDiff
-    [actor.x + xDiff, actor.y + yDiff]
 
 class Schedulable
   constructor: (act = null) ->
