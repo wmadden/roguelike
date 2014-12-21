@@ -14,6 +14,8 @@ class module.exports.Entity
         memo.push(i)
       memo
     , []
+    if availableDirections.length == 0
+      throw new Error("Can't do anything")
     index = Math.floor(Math.random() * availableDirections.length)
     direction = availableDirections[index]
     action: 'step', direction: direction
