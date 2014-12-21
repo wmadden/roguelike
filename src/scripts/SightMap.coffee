@@ -1,5 +1,5 @@
 class module.exports.SightMap
-  constructor: ({ @width, @height }) ->
+  constructor: ->
     @seen = {}
     @seenTiles = []
     @visible = {}

@@ -21,7 +21,6 @@ class Game
 
     freeTile = @level.freeTiles.pop()
     @player = new Player(x: freeTile[0], y: freeTile[1])
-    @player.sightMap = new SightMap(width: @level.width, height: @level.height)
 
     @rulesEngine = new RulesEngine(@level, @player)
     @rulesEngine.on 'entity:damageInflicted', (args...) =>
