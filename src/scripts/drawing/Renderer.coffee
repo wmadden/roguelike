@@ -19,12 +19,16 @@ class module.exports.Renderer extends events.EventEmitter
     @scale = scale if scale?
     @layers = {
       level: new pixi.DisplayObjectContainer()
+      decals: new pixi.DisplayObjectContainer()
       entities: new pixi.DisplayObjectContainer()
+      effects: new pixi.DisplayObjectContainer()
     }
 
     @rootDisplayObjectContainer = new pixi.DisplayObjectContainer()
     @rootDisplayObjectContainer.addChild(@layers.level)
+    @rootDisplayObjectContainer.addChild(@layers.decals)
     @rootDisplayObjectContainer.addChild(@layers.entities)
+    @rootDisplayObjectContainer.addChild(@layers.effects)
     @rootDisplayObjectContainer.scale = @scale
 
     @stage.addChild(@rootDisplayObjectContainer)
@@ -42,6 +46,11 @@ class module.exports.Renderer extends events.EventEmitter
       )
     ]).then =>
       @floorTextureMap = FloorTextures.floorTypes.bricks.grey
+      groundTexture = pixi.Texture.fromImage("images/dawnlike/Objects/Ground0.png")
+      @bloodTexture = new pixi.Texture(
+        groundTexture,
+        new pixi.Rectangle(16 * 1, 16 * 5, 16, 16)
+      )
       humanoidTexture = pixi.Texture.fromImage("images/dawnlike/Characters/Humanoid0.png")
       @game.playerTexture = new pixi.Texture(
         humanoidTexture,
@@ -165,3 +174,21 @@ class module.exports.Renderer extends events.EventEmitter
         , ANIMATION_DURATION)
 
       @layers.entities.addChild(entity.sprite)
+
+  on_damageInflicted: (source, destination) ->
+    blood = new pixi.Sprite(@bloodTexture)
+    @layers.effects.addChild(blood)
+    directionOfMovement = [destination.x - source.x, destination.y - source.y]
+    blood.x = destination.x * 16 + (directionOfMovement[0] * 8)
+    blood.y = destination.y * 16 + (directionOfMovement[1] * 8)
+    blood.alpha = 1
+    bloodAnimation = animation.transition(blood,
+      x: (destination.x + directionOfMovement[0]) * 16
+      y: (destination.y + directionOfMovement[1]) * 16
+    , ANIMATION_DURATION)
+    bloodAnimation.on('complete', =>
+      @layers.effects.removeChild(blood)
+      @layers.decals.addChild(blood)
+    )
+    @queueAnimation bloodAnimation
+

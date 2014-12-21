@@ -24,6 +24,8 @@ class Game
     @player.sightMap = new SightMap(width: @level.width, height: @level.height)
 
     @rulesEngine = new RulesEngine(@level, @player)
+    @rulesEngine.on 'entity:damageInflicted', (args...) =>
+      @renderer.on_entity_damageInflicted(args...)
 
     @generateSomeTestEnemies()
 
@@ -50,6 +52,13 @@ class Game
       @clearDeadEntities()
     , repeat: true
     @schedule new WaitForPlayerInput(@rulesEngine, @level, @player), repeat: true
+    @schedule =>
+      @renderer.update()
+      @needsRedraw = true
+      return if @renderer.pendingAnimations.length == 0
+      new Promise (resolve, reject) =>
+        @renderer.once('animationsComplete', resolve)
+    , repeat: true
     @schedule =>
       for entity in _(@level.entities).without(@player)
         continue if entity.dead

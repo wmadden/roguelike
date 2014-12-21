@@ -1,6 +1,7 @@
 ROT = require('rot-js').ROT
+events = require 'events'
 
-class module.exports.RulesEngine
+class module.exports.RulesEngine extends events.EventEmitter
   constructor: (@level, @player) ->
 
   step: ({ actor, direction }) ->
@@ -30,15 +31,16 @@ class module.exports.RulesEngine
   attack: ({ actor, direction }) ->
     coords = @getDestination(actor, direction)
     targetEntity = @level.entityAt(coords...)
-    inflictDamage(actor, targetEntity, 1)
+    @inflictDamage(actor, targetEntity, 1)
 
   getDestination: (actor, direction) ->
     movementDiff = ROT.DIRS[8][direction]
     [xDiff, yDiff] = movementDiff
     [actor.x + xDiff, actor.y + yDiff]
 
-inflictDamage = (source, destination, damage) ->
-  destination.health -= damage
-  if destination.health <= 0
-    destination.health = 0
-    destination.dead = true
+  inflictDamage: (source, destination, damage) ->
+    destination.health -= damage
+    if destination.health <= 0
+      destination.health = 0
+      destination.dead = true
+    @emit('entity:damageInflicted', source, destination, damage)
