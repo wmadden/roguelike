@@ -69,10 +69,11 @@ class Game
 
     @engine.start()
 
-  PERMITTED_ACTIONS = ['step', 'attack']
   processAction: (actionDetails) ->
     { action } = actionDetails
-    @rulesEngine[action](actionDetails) if _(PERMITTED_ACTIONS).include(action)
+    unless _(RulesEngine.PERMITTED_ENTITY_ACTIONS).include(action)
+      throw new Error("Action #{action} requested by entity is not permitted")
+    @rulesEngine[action](actionDetails)
 
   schedule: (action, options = {}) ->
     if typeof action is 'function'

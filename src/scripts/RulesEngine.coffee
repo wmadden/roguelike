@@ -2,6 +2,8 @@ ROT = require('rot-js').ROT
 events = require 'events'
 
 class module.exports.RulesEngine extends events.EventEmitter
+  @PERMITTED_ENTITY_ACTIONS: ['step', 'attack']
+  
   constructor: (@level, @player) ->
 
   step: ({ actor, direction }) ->
