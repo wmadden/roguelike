@@ -51,11 +51,19 @@ class Game
     , repeat: true
     @schedule new WaitForPlayerInput(@rulesEngine, @level, @player), repeat: true
     @schedule =>
-      for entity in @level.entities
-        entity.act() unless entity.dead
+      for entity in _(@level.entities).without(@player)
+        continue if entity.dead
+        action = entity.nextAction()
+        action.actor = entity
+        @processAction(action)
     , repeat: true
 
     @engine.start()
+
+  PERMITTED_ACTIONS = ['step', 'attack']
+  processAction: (actionDetails) ->
+    { action } = actionDetails
+    @rulesEngine[action](actionDetails) if _(PERMITTED_ACTIONS).include(action)
 
   schedule: (action, options = {}) ->
     if typeof action is 'function'
@@ -84,11 +92,16 @@ class Game
         x: freeTile[0]
         y: freeTile[1]
         health: 3
-        rulesEngine: @rulesEngine
+        visibleWorld: @visibleWorld()
       }))
 
   clearDeadEntities: ->
     @level.entities = _(@level.entities).filter (entity) -> !entity.dead
+
+  visibleWorld: (actor) ->
+    {
+      tileOccupied: (x, y) => @rulesEngine.canOccupy(x, y)
+    }
 
 class Schedulable
   constructor: (act = null) ->
