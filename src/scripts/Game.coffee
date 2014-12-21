@@ -148,6 +148,7 @@ class WaitForPlayerInput extends Schedulable
   act: ->
     new Promise (resolve, reject) =>
       keydownHandler = (event, keys, comboString) =>
+        event.preventDefault()
         direction = @keymap[comboString]
 
         movementDiff = ROT.DIRS[8][direction]
