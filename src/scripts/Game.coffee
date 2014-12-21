@@ -82,6 +82,7 @@ class Game
         type: 'bunny-brown'
         x: freeTile[0]
         y: freeTile[1]
+        health: 3
         rulesEngine: @rulesEngine
       }))
 
