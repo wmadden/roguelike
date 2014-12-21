@@ -124,6 +124,7 @@ class WaitForPlayerInput extends Schedulable
 
         if entityOnTile?
           @rulesEngine.attack( actor: @player, direction: direction )
+          window.removeEventListener('keydown', keydownHandler)
           resolve()
         else if @rulesEngine.step( actor: @player, direction: direction )
           window.removeEventListener('keydown', keydownHandler)
