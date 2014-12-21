@@ -37,6 +37,6 @@ class module.exports.CharacterTextures
 class TextureVariant
   constructor: (@name, json) ->
     for textureId of json.frames
-      textureName = textureId.split('.')[0]
+      textureName = textureId
       this[textureName] = pixi.TextureCache[textureId]
       pixi.Texture.removeTextureFromCache(textureId)
