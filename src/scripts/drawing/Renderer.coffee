@@ -10,7 +10,7 @@ _ = require('underscore')
 PREVIOUSLY_SEEN = 'previouslySeen'
 CURRENTLY_VISIBLE = 'currentlyVisible'
 
-ANIMATION_DURATION = 100
+ANIMATION_DURATION = 50
 
 class module.exports.Renderer extends events.EventEmitter
   scale: new pixi.Point(1,1)
@@ -49,7 +49,7 @@ class module.exports.Renderer extends events.EventEmitter
       groundTexture = pixi.Texture.fromImage("images/dawnlike/Objects/Ground0.png")
       @bloodTexture = new pixi.Texture(
         groundTexture,
-        new pixi.Rectangle(16 * 1, 16 * 5, 16, 16)
+        new pixi.Rectangle(16 * 0, 16 * 5, 16, 16)
       )
       humanoidTexture = pixi.Texture.fromImage("images/dawnlike/Characters/Humanoid0.png")
       @game.playerTexture = new pixi.Texture(
@@ -175,7 +175,7 @@ class module.exports.Renderer extends events.EventEmitter
 
       @layers.entities.addChild(entity.sprite)
 
-  on_damageInflicted: (source, destination) ->
+  on_entity_damageInflicted: (source, destination) ->
     blood = new pixi.Sprite(@bloodTexture)
     @layers.effects.addChild(blood)
     directionOfMovement = [destination.x - source.x, destination.y - source.y]
@@ -191,4 +191,3 @@ class module.exports.Renderer extends events.EventEmitter
       @layers.decals.addChild(blood)
     )
     @queueAnimation bloodAnimation
-
