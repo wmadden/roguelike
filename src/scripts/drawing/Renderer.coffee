@@ -1,10 +1,8 @@
 events = require 'events'
 pixi = require 'pixi.js'
-FloorTextures = require('tiles/dawnlike/Floor').FloorTextures
-WallTextures = require('tiles/dawnlike/Wall').WallTextures
-CharacterTextures = require('tiles/dawnlike/Character').CharacterTextures
 animation = require('./Animation')
 Array2D = require('util/Array2D')
+Textures = require('./Textures').Textures
 _ = require('underscore')
 
 PREVIOUSLY_SEEN = 'previouslySeen'
@@ -36,26 +34,12 @@ class module.exports.Renderer extends events.EventEmitter
     @transitionLevel(@game.level)
 
   loadTextures: ->
-    Promise.all([
-      FloorTextures.load(),
-      WallTextures.load('brick/light').then( (wallTexture) =>
-        @wallTexture = wallTexture
-      ),
-      CharacterTextures.load('rodent').then( (rodentTextures) =>
-        @rodentTextures = rodentTextures
-      )
-    ]).then =>
-      @floorTextureMap = FloorTextures.floorTypes.bricks.grey
-      groundTexture = pixi.Texture.fromImage("images/dawnlike/Objects/Ground0.png")
-      @bloodTexture = new pixi.Texture(
-        groundTexture,
-        new pixi.Rectangle(16 * 0, 16 * 5, 16, 16)
-      )
-      humanoidTexture = pixi.Texture.fromImage("images/dawnlike/Characters/Humanoid0.png")
-      @game.playerTexture = new pixi.Texture(
-        humanoidTexture,
-        new pixi.Rectangle(16 * 0, 16 * 7, 16, 16)
-      )
+    Textures.loadAll().then =>
+      @bloodTexture = Textures.bloodTexture
+      @wallTexture = Textures.wallTexture
+      @rodentTextures = Textures.rodentTextures
+      @floorTextureMap = Textures.floorTextureMap
+      @game.playerTexture = Textures.playerTexture
 
   transitionLevel: (newLevel) ->
     # TODO: transition between levels
