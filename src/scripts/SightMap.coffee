@@ -1,3 +1,4 @@
+_ = require('underscore')
 EventStream = require('EventStream').EventStream
 
 module.exports.UNSEEN = UNSEEN = 'unseen'
@@ -49,3 +50,20 @@ class module.exports.SightMap
   clearVisible: ->
     @visible = {}
     @visibleTiles = []
+
+  observeEntitySpawn: ({ type, id, entityState }) ->
+    entityState.visibility = CURRENTLY_VISIBLE
+    @eventStream.push({
+      type: 'entitySpawn'
+      entity: {
+        type,
+        id,
+        newState: entityState
+      }
+    })
+
+  observeEntityMove: (entity, origin, destination) ->
+    @eventStream.push({
+      type: 'entityMove'
+      entity, origin, destination
+    })

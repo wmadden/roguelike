@@ -19,3 +19,6 @@ class module.exports.Entity
     index = Math.floor(Math.random() * availableDirections.length)
     direction = availableDirections[index]
     action: 'step', direction: direction
+
+  state: ->
+    _(this).pick('x', 'y', 'type', 'id')

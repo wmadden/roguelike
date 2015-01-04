@@ -1,5 +1,9 @@
-ROT = require('rot-js').ROT
 events = require 'events'
+ROT = require('rot-js').ROT
+
+Player = require('Player').Player
+
+entityIdCounter = 0
 
 class module.exports.RulesEngine extends events.EventEmitter
   @PERMITTED_ENTITY_ACTIONS: ['step', 'attack']
@@ -14,9 +18,21 @@ class module.exports.RulesEngine extends events.EventEmitter
     else
       false
 
+  spawn: ({ entity, x, y }) ->
+    entity.x = x
+    entity.y = y
+    entity.id = entityIdCounter
+    entityIdCounter += 1
+    entity.sightMap.observeEntitySpawn({
+      type: entity.type
+      id: entity.id
+      entityState: entity.state()
+    })
+
   spawnPlayer: ->
     freeTile = @level.freeTiles.pop()
     @player = new Player({})
+    @spawn(entity: @player, x: freeTile[0], y: freeTile[1])
     @player
 
   canOccupy: (x, y) ->

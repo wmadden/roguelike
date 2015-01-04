@@ -5,6 +5,7 @@ class Player extends Entity
   constructor: (options) ->
     options.health ?= 10
     super(options)
+    @type = 'player'
     @sightMap = new SightMap()
 
   nextAction: -> throw new Error("Don't call me baby")

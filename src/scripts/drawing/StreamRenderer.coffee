@@ -6,6 +6,7 @@ Textures = require('./Textures').Textures
 _ = require('underscore')
 Tile = require('./Tile').Tile
 sightMap = require('SightMap')
+Entity = require('./Entity').Entity
 
 UNSEEN = sightMap.UNSEEN
 PREVIOUSLY_SEEN = sightMap.PREVIOUSLY_SEEN
@@ -38,9 +39,9 @@ class module.exports.StreamRenderer extends events.EventEmitter
     @rootDisplayObjectContainer.scale = @scale
 
     @tiles = Array2D.create(@game.level.width, @game.level.height)
-    @stage.addChild(@rootDisplayObjectContainer)
+    @entities = {}
 
-    @attachToEventStream(eventStream)
+    @stage.addChild(@rootDisplayObjectContainer)
 
   loadTextures: ->
     Textures.loadAll().then =>
@@ -48,7 +49,7 @@ class module.exports.StreamRenderer extends events.EventEmitter
       @wallTexture = Textures.wallTexture
       @rodentTextures = Textures.rodentTextures
       @floorTextureMap = Textures.floorTextureMap
-      @game.playerTexture = Textures.playerTexture
+      @playerTexture = Textures.playerTexture
       @texturesLoaded = true
 
   update: (msElapsed) ->
@@ -62,6 +63,9 @@ class module.exports.StreamRenderer extends events.EventEmitter
       animation.update(msElapsed)
       not animation.isComplete()
 
+    if @pendingAnimations.length == 0
+      @emit('animationsComplete')
+
   queueAnimation: (animation) ->
     @pendingAnimations.push animation
 
@@ -70,7 +74,45 @@ class module.exports.StreamRenderer extends events.EventEmitter
       @processEvent(event).then =>
         @attachToEventStream(eventStream)
 
-  processEvent: (event) -> this["process_#{event.type}"](event)
+  processEvent: (event) ->
+    console.log "Render event '#{event.type}'"
+    Promise.resolve(this["process_#{event.type}"]?(event))
+
+  process_entitySpawn: (event) ->
+    { id, type, newState } = event.entity
+    previousState = _(newState).chain().clone().extend({
+      visibility: UNSEEN
+    }).value()
+    @updateEntity({ id, type, previousState, newState })
+
+  updateEntity: ({ id, previousState, newState }) ->
+    entity = @entities[id]
+    if not entity
+      entity = @createEntity(previousState.type)
+      @layers.entities.addChild entity
+
+    if previousState.type != newState.type
+      throw new Error("Can't yet render entity transformation")
+
+    entity.x = previousState.x * 16
+    entity.y = previousState.y * 16
+    entity.alpha = @visibilityAlpha(previousState.visibility)
+
+    new Promise ( resolve, reject ) =>
+      animation = entity.transition( ANIMATION_DURATION, {
+        x: newState.x * 16
+        y: newState.y * 16
+        alpha: @visibilityAlpha(newState.visibility)
+      })
+      @queueAnimation animation
+      animation.on('complete', resolve)
+
+  createEntity: (type) ->
+    switch type
+      when 'player'
+        new Entity(type: 'player', texture: @playerTexture)
+      when 'bunny-brown'
+        Entity.create(@rodentTextures, type)
 
   process_dungeonFeaturesVisibilityChange: (event) ->
     { previouslyVisibleTiles, newlyVisibleTiles } = event

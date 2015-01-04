@@ -27,36 +27,26 @@ class Game
     @generateSomeTestEnemies()
 
     @renderer = new Renderer({
-      @stage, game: this, scale: @scale,
-      eventStream: @player.sightMap.eventStream
+      @stage, game: this, scale: @scale
     })
 
   load: ->
     # First time only
     @schedule => @renderer.loadTextures()
+    @schedule =>
+      @renderer.attachToEventStream(@player.sightMap.eventStream)
+      Promise.resolve()
 
     # Every tick
     @schedule =>
       @rulesEngine.updateSightmap(@player)
     , repeat: true
-    @schedule =>
-      @renderer.update()
-    , repeat: true
-    @schedule =>
-      return if @renderer.pendingAnimations.length == 0
-      new Promise (resolve, reject) =>
-        @renderer.once('animationsComplete', resolve)
-    , repeat: true
+    @schedule (=> @waitForAnimations()), repeat: true
     @schedule =>
       @clearDeadEntities()
     , repeat: true
     @schedule new WaitForPlayerInput(@rulesEngine, @level, @player), repeat: true
-    @schedule =>
-      @renderer.update()
-      return if @renderer.pendingAnimations.length == 0
-      new Promise (resolve, reject) =>
-        @renderer.once('animationsComplete', resolve)
-    , repeat: true
+    @schedule (=> @waitForAnimations()), repeat: true
     @schedule =>
       for entity in _(@level.entities).without(@player)
         continue if entity.dead
@@ -66,6 +56,11 @@ class Game
     , repeat: true
 
     @engine.start()
+
+  waitForAnimations: ->
+    return if @renderer.pendingAnimations.length == 0
+    new Promise (resolve, reject) =>
+      @renderer.once('animationsComplete', resolve)
 
   processAction: (actionDetails) ->
     { action } = actionDetails
