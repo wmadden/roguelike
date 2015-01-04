@@ -20,8 +20,6 @@ class Game
     @level.generate()
 
     @rulesEngine = new RulesEngine(@level, @player)
-    @rulesEngine.on 'entity:damageInflicted', (args...) =>
-      @renderer.on_entity_damageInflicted(args...)
     @player = @rulesEngine.spawnPlayer()
 
     @generateSomeTestEnemies()

@@ -67,11 +67,9 @@ class module.exports.RulesEngine extends events.EventEmitter
     [destX, destY] = destination
     actor.x = destX
     actor.y = destY
-    @emit('entity:moved', actor, destination)
 
   inflictDamage: (source, destination, damage) ->
     destination.health -= damage
     if destination.health <= 0
       destination.health = 0
       destination.dead = true
-    @emit('entity:damageInflicted', source, destination, damage)
