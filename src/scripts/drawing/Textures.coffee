@@ -1,4 +1,5 @@
 pixi = require 'pixi.js'
+Promise = require('es6-promise').Promise
 
 FloorTextures = require('tiles/dawnlike/Floor').FloorTextures
 WallTextures = require('tiles/dawnlike/Wall').WallTextures
