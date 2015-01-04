@@ -19,12 +19,10 @@ class Game
     @level = new Level(width: 80, height: 40)
     @level.generate()
 
-    freeTile = @level.freeTiles.pop()
-    @player = new Player(x: freeTile[0], y: freeTile[1])
-
     @rulesEngine = new RulesEngine(@level, @player)
     @rulesEngine.on 'entity:damageInflicted', (args...) =>
       @renderer.on_entity_damageInflicted(args...)
+    @player = @rulesEngine.spawnPlayer()
 
     @generateSomeTestEnemies()
 

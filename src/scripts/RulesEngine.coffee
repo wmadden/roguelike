@@ -14,6 +14,11 @@ class module.exports.RulesEngine extends events.EventEmitter
     else
       false
 
+  spawnPlayer: ->
+    freeTile = @level.freeTiles.pop()
+    @player = new Player({})
+    @player
+
   canOccupy: (x, y) ->
     destinationTile = @level.tiles[x][y]
     destinationTile?.type == 'floor' && not @level.entityAt(x, y)? &&
