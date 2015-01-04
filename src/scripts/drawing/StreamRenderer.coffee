@@ -79,16 +79,24 @@ class module.exports.StreamRenderer extends events.EventEmitter
     Promise.resolve(this["process_#{event.type}"]?(event))
 
   process_entitySpawn: (event) ->
-    { id, type, newState } = event.entity
+    { id, newState } = event.entity
     previousState = _(newState).chain().clone().extend({
       visibility: UNSEEN
     }).value()
-    @updateEntity({ id, type, previousState, newState })
+    @updateEntity({ id, previousState, newState })
+
+  process_entityMove: (event) ->
+    { id, previousState, newState } = event.entity
+    previousState = _(newState).chain().clone().extend({
+      visibility: UNSEEN
+    }).value()
+    @updateEntity(event.entity)
 
   updateEntity: ({ id, previousState, newState }) ->
     entity = @entities[id]
     if not entity
       entity = @createEntity(previousState.type)
+      this.entities[id] = entity
       @layers.entities.addChild entity
 
     if previousState.type != newState.type

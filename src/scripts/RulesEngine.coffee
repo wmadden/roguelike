@@ -2,13 +2,14 @@ events = require 'events'
 ROT = require('rot-js').ROT
 
 Player = require('Player').Player
+sightMap = require('SightMap')
 
 entityIdCounter = 0
 
 class module.exports.RulesEngine extends events.EventEmitter
   @PERMITTED_ENTITY_ACTIONS: ['step', 'attack']
 
-  constructor: (@level, @player) ->
+  constructor: (@level) ->
 
   step: ({ actor, direction }) ->
     [destX, destY] = @getDestination(actor, direction)
@@ -22,6 +23,7 @@ class module.exports.RulesEngine extends events.EventEmitter
     entity.x = x
     entity.y = y
     entity.id = entityIdCounter
+    @level.entities.push(entity)
     entityIdCounter += 1
     entity.sightMap.observeEntitySpawn({
       type: entity.type
@@ -63,10 +65,25 @@ class module.exports.RulesEngine extends events.EventEmitter
     [xDiff, yDiff] = movementDiff
     [actor.x + xDiff, actor.y + yDiff]
 
-  move: (actor, destination) ->
+  move: (entity, destination) ->
+    previousState = entity.state()
+    previousState.visibility = sightMap.CURRENTLY_VISIBLE
+
     [destX, destY] = destination
-    actor.x = destX
-    actor.y = destY
+    entity.x = destX
+    entity.y = destY
+
+    newState = entity.state()
+    newState.visibility = sightMap.CURRENTLY_VISIBLE
+
+    entity.sightMap?.observeEntityMove({
+      entity: {
+        id: entity.id
+        previousState
+        newState
+      }
+    })
+    # TODO: notify any other entities observing this entity's movement
 
   inflictDamage: (source, destination, damage) ->
     destination.health -= damage

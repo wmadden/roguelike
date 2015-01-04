@@ -51,19 +51,19 @@ class module.exports.SightMap
     @visible = {}
     @visibleTiles = []
 
-  observeEntitySpawn: ({ type, id, entityState }) ->
+  observeEntitySpawn: ({ id, entityState }) ->
     entityState.visibility = CURRENTLY_VISIBLE
     @eventStream.push({
       type: 'entitySpawn'
       entity: {
-        type,
         id,
         newState: entityState
       }
     })
 
-  observeEntityMove: (entity, origin, destination) ->
+  observeEntityMove: ({ id, entity }) ->
     @eventStream.push({
       type: 'entityMove'
-      entity, origin, destination
+      id
+      entity
     })
