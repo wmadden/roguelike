@@ -6,7 +6,7 @@ Promise = require('es6-promise').Promise
 _ = require('underscore')
 KeyboardJS = require('keyboardjs')
 
-Renderer = require('drawing/Renderer').Renderer
+Renderer = require('drawing/StreamRenderer').StreamRenderer
 RulesEngine = require('RulesEngine').RulesEngine
 Entity = require('Entity').Entity
 SightMap = require('SightMap').SightMap
@@ -28,7 +28,10 @@ class Game
 
     @generateSomeTestEnemies()
 
-    @renderer = new Renderer({ @stage, game: this, scale: @scale })
+    @renderer = new Renderer({
+      @stage, game: this, scale: @scale,
+      eventStream: @player.sightMap.eventStream
+    })
 
   load: ->
     # First time only
@@ -40,7 +43,6 @@ class Game
     , repeat: true
     @schedule =>
       @renderer.update()
-      @needsRedraw = true
     , repeat: true
     @schedule =>
       return if @renderer.pendingAnimations.length == 0
@@ -53,7 +55,6 @@ class Game
     @schedule new WaitForPlayerInput(@rulesEngine, @level, @player), repeat: true
     @schedule =>
       @renderer.update()
-      @needsRedraw = true
       return if @renderer.pendingAnimations.length == 0
       new Promise (resolve, reject) =>
         @renderer.once('animationsComplete', resolve)
@@ -84,12 +85,10 @@ class Game
     @scheduler.add(schedulable, options.repeat)
 
   draw: (msElapsed) ->
-    if @renderer.pendingAnimations.length > 0
-      @renderer.updateAnimations(msElapsed)
+    @renderer.update(msElapsed)
+    if @renderer.needsRedraw
       @pixiRenderer.render @stage
-    else if @needsRedraw
-      @pixiRenderer.render @stage
-      @needsRedraw = false
+      @renderer.needsRedraw = false
 
   generateSomeTestEnemies: ->
     for i in [0..10]
