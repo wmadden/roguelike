@@ -4,6 +4,7 @@ animation = require('./Animation')
 Array2D = require('util/Array2D')
 Textures = require('./Textures').Textures
 _ = require('underscore')
+Tile = require('./Tile').Tile
 
 PREVIOUSLY_SEEN = 'previouslySeen'
 CURRENTLY_VISIBLE = 'currentlyVisible'
@@ -65,49 +66,37 @@ class module.exports.Renderer extends events.EventEmitter
   queueAnimation: (animation) ->
     @pendingAnimations.push animation
 
-  floorSprite: (x, y) ->
-    tile = @game.level.tiles[x][y]
-    sprite = new pixi.Sprite(
-      @floorTextureMap[ tile.north ][ tile.east ][ tile.south ][ tile.west ]
-    )
-
-    sprite.x = x * 16
-    sprite.y = y * 16
-    sprite
-
-  wallSprite: (x, y) ->
-    tile = @game.level.tiles[x][y]
-    textureName = "#{if tile.north == 'wall' then 'N' else '_'}#{if tile.east is "wall" then "E" else "_"}#{if tile.south is "wall" then "S" else "_"}#{if tile.west is "wall" then "W" else "_"}"
-    sprite = new pixi.Sprite(
-      @wallTexture[textureName]
-    )
-
-    sprite.x = x * 16
-    sprite.y = y * 16
-    sprite
+  createTile: (x, y) ->
+    gameTile = @game.level.tiles[x][y]
+    if gameTile.type == 'floor'
+      tileDescriptor = {
+        floor: _(gameTile).extend(textureMap: @floorTextureMap)
+      }
+    else
+      tileDescriptor = {
+        wall: _(gameTile).extend(textureMap: @wallTexture)
+      }
+    _(new Tile(tileDescriptor)).tap (tile) ->
+      tile.x = x * 16
+      tile.y = y * 16
 
   drawTile: (x, y, visibility) ->
     tile = @tiles[x][y]
 
     if not tile?
-      switch @game.level.tiles[x][y]?.type
-        when 'floor'
-          tile = @floorSprite(x, y)
-        when 'wall'
-          wallSprite = @wallSprite(x, y)
-          tile = wallSprite if wallSprite?
+      tile = @createTile(x, y)
       tile.alpha = 0
       @layers.level.addChild tile
       @tiles[x][y] = tile
 
     if visibility == PREVIOUSLY_SEEN
-      @queueAnimation animation.transition(tile, {
+      @queueAnimation tile.transition(ANIMATION_DURATION, {
         alpha: 0.5
-      }, ANIMATION_DURATION)
+      })
     else
-      @queueAnimation animation.transition(tile, {
+      @queueAnimation tile.transition(ANIMATION_DURATION, {
         alpha: 1.0
-      }, ANIMATION_DURATION)
+      })
 
   drawLevel: (level) ->
     for {x, y} in @game.player.sightMap.visibleTiles

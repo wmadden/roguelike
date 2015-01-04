@@ -11,10 +11,14 @@ module.exports.Animation = class Animation extends events.EventEmitter
   update: (msElapsed) ->
 
   isComplete: -> @_complete
+
   markCompleted: ->
     return if @_complete
     @_complete = true
     @emit('complete')
+
+  stop: ->
+    @markCompleted()
 
 module.exports.Transition = class Transition extends Animation
   constructor: (@sprite, @properties, @duration, transitionFunction) ->
@@ -22,6 +26,7 @@ module.exports.Transition = class Transition extends Animation
     @originalProperties = _(@sprite).pick(_(@properties).keys())
 
   update: (msElapsed) ->
+    return if @isComplete()
     allPropertiesTransitioned = true
     for property, finalValue of @properties
       currentValue = @sprite[property]

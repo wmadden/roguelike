@@ -1,4 +1,5 @@
 pixi = require 'pixi.js'
+animation = require('./Animation')
 
 class module.exports.Tile extends pixi.DisplayObjectContainer
   constructor: (options) ->
@@ -20,6 +21,11 @@ class module.exports.Tile extends pixi.DisplayObjectContainer
     if @decals
       for decal in @decals
         @addChild @_decal(@decals.textureMap, decal)
+
+  transition: (duration, properties) ->
+    if @transitionAnimation && !@transitionAnimation.isComplete()
+      @transitionAnimation.stop()
+    @transitionAnimation = animation.transition(this, properties, duration)
 
   _floor: ({ textureMap, north, east, south, west }) ->
     new pixi.Sprite(
