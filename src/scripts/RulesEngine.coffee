@@ -3,7 +3,7 @@ events = require 'events'
 
 class module.exports.RulesEngine extends events.EventEmitter
   @PERMITTED_ENTITY_ACTIONS: ['step', 'attack']
-  
+
   constructor: (@level, @player) ->
 
   step: ({ actor, direction }) ->
@@ -24,10 +24,13 @@ class module.exports.RulesEngine extends events.EventEmitter
 
   updateSightmap: (entity) ->
     fov = new ROT.FOV.PreciseShadowcasting((x, y) => @lightPasses(x, y))
-    entity.sightMap.clearVisible()
+    nowVisible = []
+
     fov.compute( entity.x, entity.y, entity.sightRadius, (x, y, r, visibility) ->
-      entity.sightMap.markAsVisible {x, y}
+      nowVisible.push {x, y}
     )
+
+    entity.sightMap.updateVisibleTiles(nowVisible)
 
   attack: ({ actor, direction }) ->
     coords = @getDestination(actor, direction)
