@@ -1,5 +1,9 @@
 EventStream = require('EventStream').EventStream
 
+module.exports.UNSEEN = UNSEEN = 'unseen'
+module.exports.PREVIOUSLY_SEEN = PREVIOUSLY_SEEN = 'previouslySeen'
+module.exports.CURRENTLY_VISIBLE = CURRENTLY_VISIBLE = 'currentlyVisible'
+
 class module.exports.SightMap
   constructor: ->
     # Hashes describing which tiles have been seen and are currently visible

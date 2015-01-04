@@ -5,15 +5,22 @@ Array2D = require('util/Array2D')
 Textures = require('./Textures').Textures
 _ = require('underscore')
 Tile = require('./Tile').Tile
+sightMap = require('SightMap')
 
-PREVIOUSLY_SEEN = 'previouslySeen'
-CURRENTLY_VISIBLE = 'currentlyVisible'
+UNSEEN = sightMap.UNSEEN
+PREVIOUSLY_SEEN = sightMap.PREVIOUSLY_SEEN
+CURRENTLY_VISIBLE = sightMap.CURRENTLY_VISIBLE
+
+VISIBILITY_ALPHAS = {}
+VISIBILITY_ALPHAS[UNSEEN] = 0.0
+VISIBILITY_ALPHAS[PREVIOUSLY_SEEN] = 0.5
+VISIBILITY_ALPHAS[CURRENTLY_VISIBLE] = 1.0
 
 ANIMATION_DURATION = 50
 
 class module.exports.StreamRenderer extends events.EventEmitter
   scale: new pixi.Point(1,1)
-  constructor: ({ @stage, @game, scale, eventStream }) ->
+  constructor: ({ @stage, @game, scale }) ->
     @needsRedraw = false
     @pendingAnimations = []
     @scale = scale if scale?
@@ -65,7 +72,8 @@ class module.exports.StreamRenderer extends events.EventEmitter
 
   processEvent: (event) -> this["process_#{event.type}"](event)
 
-  process_dungeonFeaturesVisibilityChange: ({ previouslyVisibleTiles, newlyVisibleTiles }) ->
+  process_dungeonFeaturesVisibilityChange: (event) ->
+    { previouslyVisibleTiles, newlyVisibleTiles } = event
     updates = []
     for tile in previouslyVisibleTiles
       { x, y } = tile
@@ -90,7 +98,6 @@ class module.exports.StreamRenderer extends events.EventEmitter
       tile.y = y * 16
 
   updateTile: (x, y, gameTile, visibility) ->
-    # { x, y } = gameTile
     tile = @tiles[x][y]
 
     if not tile?
@@ -100,13 +107,10 @@ class module.exports.StreamRenderer extends events.EventEmitter
       @tiles[x][y] = tile
 
     new Promise ( resolve, reject ) =>
-      animation = if visibility == PREVIOUSLY_SEEN
-        tile.transition(ANIMATION_DURATION, {
-          alpha: 0.5
-        })
-      else
-        tile.transition(ANIMATION_DURATION, {
-          alpha: 1.0
-        })
+      animation = tile.transition(ANIMATION_DURATION, {
+        alpha: @visibilityAlpha(visibility)
+      })
       @queueAnimation animation
       animation.on('complete', resolve)
+
+  visibilityAlpha: (visibility) -> VISIBILITY_ALPHAS[visibility]
