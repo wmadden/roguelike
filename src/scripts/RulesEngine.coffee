@@ -1,3 +1,4 @@
+_ = require('underscore')
 events = require 'events'
 ROT = require('rot-js').ROT
 
@@ -22,17 +23,20 @@ class module.exports.RulesEngine extends events.EventEmitter
   spawn: ({ entity, x, y }) ->
     entity.x = x
     entity.y = y
-    entity.id = entityIdCounter
+    entity.id = (entityIdCounter++)
+
+    @updateSightmap(entity) if entity.sightMap?
     @level.entities.push(entity)
-    entityIdCounter += 1
-    entity.sightMap.observeEntitySpawn({
-      type: entity.type
-      id: entity.id
-      entityState: entity.state()
-    })
+
+    for observer in @whoCanSeeEntity(entity)
+      observer.sightMap?.observeEntitySpawn({
+        type: entity.type
+        id: entity.id
+        entityState: entity.state()
+      })
 
   spawnPlayer: ->
-    freeTile = @level.freeTiles.pop()
+    freeTile = @level.freeTiles.shift()
     @player = new Player({})
     @spawn(entity: @player, x: freeTile[0], y: freeTile[1])
     @player
@@ -47,13 +51,18 @@ class module.exports.RulesEngine extends events.EventEmitter
 
   updateSightmap: (entity) ->
     fov = new ROT.FOV.PreciseShadowcasting((x, y) => @lightPasses(x, y))
-    nowVisible = []
+    nowVisibleTiles = []
+    nowVisibleEntities = []
 
-    fov.compute( entity.x, entity.y, entity.sightRadius, (x, y, r, visibility) ->
-      nowVisible.push {x, y}
+    fov.compute( entity.x, entity.y, entity.sightRadius, (x, y, r, visibility) =>
+      nowVisibleTiles.push {x, y}
+      # TODO: calculating entity visibility should probably not be here
+      entityOnTile = @level.entityAt(x, y)
+      nowVisibleEntities.push(entityOnTile.state()) if entityOnTile
     )
 
-    entity.sightMap.updateVisibleTiles(nowVisible)
+    entity.sightMap.updateVisibleTiles(nowVisibleTiles)
+    entity.sightMap.updateVisibleEntities(nowVisibleEntities)
 
   attack: ({ actor, direction }) ->
     coords = @getDestination(actor, direction)
@@ -65,28 +74,46 @@ class module.exports.RulesEngine extends events.EventEmitter
     [xDiff, yDiff] = movementDiff
     [actor.x + xDiff, actor.y + yDiff]
 
-  move: (entity, destination) ->
-    previousState = entity.state()
+  move: (movingEntity, destination) ->
+    previousState = movingEntity.state()
     previousState.visibility = sightMap.CURRENTLY_VISIBLE
 
-    [destX, destY] = destination
-    entity.x = destX
-    entity.y = destY
+    # People who can see the target before it moves
+    entitiesObservingTargetAtOrigin = @whoCanSeeEntity(movingEntity)
 
-    newState = entity.state()
+    [destX, destY] = destination
+    movingEntity.x = destX
+    movingEntity.y = destY
+    @updateSightmap(movingEntity) if movingEntity.sightMap?
+
+    newState = movingEntity.state()
     newState.visibility = sightMap.CURRENTLY_VISIBLE
 
-    entity.sightMap?.observeEntityMove({
-      entity: {
-        id: entity.id
-        previousState
-        newState
-      }
-    })
-    # TODO: notify any other entities observing this entity's movement
+    entitiesObservingTargetAtDestination = @whoCanSeeEntity(movingEntity)
+
+    for entity in @level.entities
+      # TODO: decide if the entity was visible or not inside the SightMap
+      previouslyVisible = _(entitiesObservingTargetAtOrigin).contains(entity)
+      currentlyVisible = _(entitiesObservingTargetAtDestination).contains(entity)
+
+      if previouslyVisible || currentlyVisible
+        previousState.visibility = if previouslyVisible then sightMap.CURRENTLY_VISIBLE else sightMap.UNSEEN
+        newState.visibility = if currentlyVisible then sightMap.CURRENTLY_VISIBLE else sightMap.UNSEEN
+        entity.sightMap?.observeEntityMove({
+          id: movingEntity.id
+          previousState
+          newState
+        })
 
   inflictDamage: (source, destination, damage) ->
     destination.health -= damage
     if destination.health <= 0
       destination.health = 0
       destination.dead = true
+
+  whoCanSeeEntity: (entity) ->
+    # TODO: can they see this entity? Invisible, sneaking, etc.
+    @whoCanSeeTile({ x: entity.x, y: entity.y })
+
+  whoCanSeeTile: (tile) ->
+    _(@level.entities).filter (entity) -> entity.sightMap?.isVisible(tile)

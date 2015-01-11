@@ -36,9 +36,6 @@ class Game
       Promise.resolve()
 
     # Every tick
-    @schedule =>
-      @rulesEngine.updateSightmap(@player)
-    , repeat: true
     @schedule (=> @waitForAllEventsToBeDrawn()), repeat: true
     @schedule =>
       @clearDeadEntities()
