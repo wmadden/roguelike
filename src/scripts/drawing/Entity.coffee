@@ -14,5 +14,5 @@ class module.exports.Entity extends pixi.Sprite
       @transitionAnimation.stop()
     @transitionAnimation = animation.transition(this, properties, duration)
 
-  create: (textureMap, type) ->
+  @create: (textureMap, type) ->
     new Entity({ type, texture: textureMap["#{type}_0"] })
