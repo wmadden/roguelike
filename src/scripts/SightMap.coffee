@@ -13,6 +13,7 @@ class module.exports.SightMap
     # Arrays of tile objects that have been seen and are currently visible
     @seenTiles = []
     @visibleTiles = []
+    @visibleEntities = []
     @eventStream = new EventStream()
 
   haveSeen: ({x, y}) -> @seen[x]?[y]
@@ -41,29 +42,73 @@ class module.exports.SightMap
     for tile in newlyVisibleTiles
       @markAsVisible(tile)
 
+    @_observeDungeonFeaturesVisibilityChange(previouslyVisibleTiles, newlyVisibleTiles)
+
+  updateVisibleEntities: (newlyVisibleEntities) ->
+    previouslyVisibleEntities = @visibleEntities
+
+    entitiesEnteringFOV = []
+    entitiesLeavingFOV = []
+    for entity in _(previouslyVisibleEntities.concat(newlyVisibleEntities)).unique((e) -> e.id)
+      wasPreviouslyVisible = !!_(previouslyVisibleEntities).find((e) -> e.id == entity.id)
+      isCurrentlyVisible = !!_(newlyVisibleEntities).find((e) -> e.id == entity.id)
+
+      if wasPreviouslyVisible && !isCurrentlyVisible
+        entitiesLeavingFOV.push(entity)
+        # @_observeEntityLeaveFOV(id: entity.id, entityState: entity)
+      else if !wasPreviouslyVisible && isCurrentlyVisible
+        entitiesEnteringFOV.push(entity)
+        # @_observeEntityEnterFOV(id: entity.id, entityState: entity)
+
+    @_observeEntitiesVisibilityChange({ entitiesEnteringFOV, entitiesLeavingFOV })
+    @visibleEntities = newlyVisibleEntities
+
+  clearVisible: ->
+    @visible = {}
+    @visibleTiles = []
+
+  _observeDungeonFeaturesVisibilityChange: (previouslyVisibleTiles, newlyVisibleTiles) ->
     @eventStream.push({
       type: 'dungeonFeaturesVisibilityChange'
       previouslyVisibleTiles
       newlyVisibleTiles
     })
 
-  clearVisible: ->
-    @visible = {}
-    @visibleTiles = []
 
+  _observeEntitiesVisibilityChange: ({ entitiesEnteringFOV, entitiesLeavingFOV }) ->
+    @eventStream.push({
+      type: 'entitiesVisibilityChanged'
+      entitiesEnteringFOV
+      entitiesLeavingFOV
+    })
+
+  # TODO: rephrase event types in the past tense
   observeEntitySpawn: ({ id, entityState }) ->
-    entityState.visibility = CURRENTLY_VISIBLE
+    previousState = entityState
+    previousState.visibility = UNSEEN
+    newState = _(previousState).clone()
+    newState.visibility = CURRENTLY_VISIBLE
+    @visibleEntities.push(entityState)
     @eventStream.push({
       type: 'entitySpawn'
       entity: {
-        id,
-        newState: entityState
+        id
+        previousState
+        newState
       }
     })
 
-  observeEntityMove: ({ id, entity }) ->
+  observeEntityMove: ({ id, previousState, newState }) ->
+    if newState.visibility == CURRENTLY_VISIBLE
+      isVisible = _(@visibleEntities).find (e) -> e.id == id
+      @visibleEntities.push(newState) unless isVisible
+    else
+      @visibleEntities = _(@visibleEntities).reject (e) -> e.id == id
     @eventStream.push({
       type: 'entityMove'
-      id
-      entity
+      entity: {
+        id
+        previousState: previousState
+        newState: newState
+      }
     })
