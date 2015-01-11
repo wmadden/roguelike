@@ -39,12 +39,12 @@ class Game
     @schedule =>
       @rulesEngine.updateSightmap(@player)
     , repeat: true
-    @schedule (=> @waitForAnimations()), repeat: true
+    @schedule (=> @waitForAllEventsToBeDrawn()), repeat: true
     @schedule =>
       @clearDeadEntities()
     , repeat: true
     @schedule new WaitForPlayerInput(@rulesEngine, @level, @player), repeat: true
-    @schedule (=> @waitForAnimations()), repeat: true
+    @schedule (=> @waitForAllEventsToBeDrawn()), repeat: true
     @schedule =>
       for entity in _(@level.entities).without(@player)
         continue if entity.dead
@@ -55,10 +55,23 @@ class Game
 
     @engine.start()
 
-  waitForAnimations: ->
-    return if @renderer.pendingAnimations.length == 0
-    new Promise (resolve, reject) =>
-      @renderer.once('animationsComplete', resolve)
+  waitForAllEventsToBeDrawn: ->
+    Promise.all([
+      new Promise (resolve, reject) =>
+        test = =>
+          if @player.sightMap.eventStream.eventsRemaining() == 0
+            resolve()
+          else
+            @player.sightMap.eventStream.once('pop', test)
+        test()
+      new Promise (resolve, reject) =>
+        test = =>
+          if @renderer.pendingAnimations.length == 0
+            resolve()
+          else
+            @renderer.once('animationsComplete', test)
+        test()
+    ])
 
   processAction: (actionDetails) ->
     { action } = actionDetails
@@ -86,13 +99,14 @@ class Game
       index = Math.floor(Math.random() * (@level.freeTiles.length))
       freeTile = @level.freeTiles[index]
       @level.freeTiles.splice(index, 1)
-      @level.entities.push(new Entity({
-        type: 'bunny-brown'
+      @rulesEngine.spawn({
+        entity: new Entity({
+          type: 'bunny-brown'
+          health: 3
+          visibleWorld: @visibleWorld()
+        })
         x: freeTile[0]
         y: freeTile[1]
-        health: 3
-        visibleWorld: @visibleWorld()
-      }))
 
   clearDeadEntities: ->
     @level.entities = _(@level.entities).filter (entity) -> !entity.dead
