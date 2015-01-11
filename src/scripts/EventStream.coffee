@@ -5,30 +5,27 @@ Promise = require('es6-promise').Promise
 # and can be piped into other streams.
 class module.exports.EventStream extends events.EventEmitter
   constructor: ->
-    @_events = []
+    @_eventQueue = []
+
+  eventsRemaining: -> @_eventQueue.length
 
   push: (event) ->
-    @_events.push(event)
-    @emit('data', event)
+    @_eventQueue.push(event)
+    @emit('push', event)
 
-  pop: -> @_events.shift()
+  pop: ->
+    event = @_eventQueue.shift()
+    @emit('pop', event)
+    event
 
   # Returns a Promise that resolves with the next event emitted by the stream.
   next: ->
     new Promise (resolve, reject) =>
-      if @_events.length > 0
+      if @eventsRemaining() > 0
         resolve(@pop())
-      else if @_ended
-        reject()
       else
-        @once('data', =>
-          @removeListener('end', reject)
+        @once('push', =>
           resolve(@pop())
         )
-        @once('end', reject)
 
-  remainingEvents: -> @_events.length
-
-  end: ->
-    @_ended = true
-    @emit('end')
+  remainingEvents: -> @_eventQueue.length
