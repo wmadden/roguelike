@@ -104,6 +104,7 @@ class Game
         })
         x: freeTile[0]
         y: freeTile[1]
+      })
 
   clearDeadEntities: ->
     @level.entities = _(@level.entities).filter (entity) -> !entity.dead
