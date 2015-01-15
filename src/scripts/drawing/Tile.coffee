@@ -23,9 +23,9 @@ class module.exports.Tile extends pixi.DisplayObjectContainer
         @addChild @_decal(@decals.textureMap, decal)
 
   transition: (duration, properties) ->
-    if @transitionAnimation && !@transitionAnimation.isComplete()
+    if @transitionAnimation && !@transitionAnimation.isFinished()
       @transitionAnimation.stop()
-    @transitionAnimation = animation.transition(this, properties, duration)
+    @transitionAnimation = new animation.Transition(this, properties, duration)
 
   _floor: ({ textureMap, north, east, south, west }) ->
     new pixi.Sprite(
