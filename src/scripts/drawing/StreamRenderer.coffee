@@ -88,18 +88,18 @@ class module.exports.StreamRenderer extends events.EventEmitter
 
   process_entitiesVisibilityChanged: (event) ->
     { entitiesEnteringFOV, entitiesLeavingFOV } = event
-    for entity in entitiesEnteringFOV
-      previousState = entity
+    for entityState in entitiesEnteringFOV
+      previousState = entityState
       previousState.visibility = UNSEEN
       newState = _(previousState).clone()
       newState.visibility = CURRENTLY_VISIBLE
-      @updateEntity({ id: entity.id, previousState, newState })
-    for entity in entitiesLeavingFOV
-      previousState = entity
+      @updateEntity({ id: entityState.id, previousState, newState })
+    for entityState in entitiesLeavingFOV
+      previousState = entityState
       previousState.visibility = CURRENTLY_VISIBLE
       newState = _(previousState).clone()
       newState.visibility = UNSEEN
-      @updateEntity({ id: entity.id, previousState, newState })
+      @updateEntity({ id: entityState.id, previousState, newState })
 
   updateEntity: ({ id, previousState, newState }) ->
     entity = @entities[id]
