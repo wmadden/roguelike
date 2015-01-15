@@ -61,7 +61,7 @@ class module.exports.StreamRenderer extends events.EventEmitter
   updateAnimations: (msElapsed) ->
     @pendingAnimations = _(@pendingAnimations).filter (animation) ->
       animation.update(msElapsed)
-      not animation.isComplete()
+      not animation.isFinished()
 
     if @pendingAnimations.length == 0
       @emit('animationsComplete')
@@ -85,6 +85,18 @@ class module.exports.StreamRenderer extends events.EventEmitter
   process_entityMove: (event) ->
     { id, previousState, newState } = event.entity
     @updateEntity(event.entity)
+
+  process_damageInflicted: (event) ->
+    { destination: { id, previousState, newState } } = event
+    entity = @entities[id]
+    @queueAnimation entity.bulge( ANIMATION_DURATION, new pixi.Point(1.25, 1.25) )
+
+    if not event.destination.newState.dead
+      @updateEntity(event.destination)
+    else
+      # TODO: don't manipulate the event state to do this, use an explicit method
+      event.destination.newState.visibility = UNSEEN
+      @updateEntity(event.destination)
 
   process_entitiesVisibilityChanged: (event) ->
     { entitiesEnteringFOV, entitiesLeavingFOV } = event
@@ -111,25 +123,27 @@ class module.exports.StreamRenderer extends events.EventEmitter
     if previousState.type != newState.type
       throw new Error("Can't yet render entity transformation")
 
-    entity.x = previousState.x * 16
-    entity.y = previousState.y * 16
+    entity.x = previousState.x * 16 + 8
+    entity.y = previousState.y * 16 + 8
     entity.alpha = @visibilityAlpha(previousState.visibility)
 
     new Promise ( resolve, reject ) =>
       animation = entity.transition( ANIMATION_DURATION, {
-        x: newState.x * 16
-        y: newState.y * 16
+        x: newState.x * 16 + 8
+        y: newState.y * 16 + 8
         alpha: @visibilityAlpha(newState.visibility)
       })
       @queueAnimation animation
-      animation.on('complete', resolve)
+      animation.on('finished', resolve)
 
   createEntity: (type) ->
     switch type
       when 'player'
-        new Entity(type: 'player', texture: @playerTexture)
+        entity = new Entity(type: 'player', texture: @playerTexture)
       when 'bunny-brown'
-        Entity.create(@rodentTextures, type)
+        entity = Entity.create(@rodentTextures, type)
+    entity.pivot = new pixi.Point(8,8)
+    return entity
 
   process_dungeonFeaturesVisibilityChange: (event) ->
     { previouslyVisibleTiles, newlyVisibleTiles } = event
@@ -170,6 +184,6 @@ class module.exports.StreamRenderer extends events.EventEmitter
         alpha: @visibilityAlpha(visibility)
       })
       @queueAnimation animation
-      animation.on('complete', resolve)
+      animation.on('finished', resolve)
 
   visibilityAlpha: (visibility) -> VISIBILITY_ALPHAS[visibility]
