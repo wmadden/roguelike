@@ -10,9 +10,14 @@ class module.exports.Entity extends pixi.Sprite
   set: ({ @type, @id }) ->
 
   transition: (duration, properties) ->
-    if @transitionAnimation && !@transitionAnimation.isComplete()
+    if @transitionAnimation && !@transitionAnimation.isFinished()
       @transitionAnimation.stop()
-    @transitionAnimation = animation.transition(this, properties, duration)
+    @transitionAnimation = new animation.Transition(this, properties, duration)
+
+  bulge: (duration, bulgeAmount) ->
+    if @bulgeAnimation && !@bulgeAnimation.isFinished()
+      @bulgeAnimation.stop()
+    @bulgeAnimation = new animation.Bulge(this, bulgeAmount, duration)
 
   @create: (textureMap, type) ->
     new Entity({ type, texture: textureMap["#{type}_0"] })
