@@ -106,10 +106,31 @@ class module.exports.RulesEngine extends events.EventEmitter
         })
 
   inflictDamage: (source, destination, damage) ->
+    originalDestinationState = destination.state()
+
     destination.health -= damage
+    observers = @whoCanSeeEntity(destination)
+
     if destination.health <= 0
       destination.health = 0
       destination.dead = true
+      @level.entities = _(@level.entities).without(destination)
+
+    for observer in observers
+      # TODO: check if the observer can see the source as well as the destination
+      observer.sightMap?.observeDamageInflicted({
+        source: {
+          type: source.type
+          id: source.id
+          entityState: source.state()
+        }
+        destination: {
+          type: destination.type
+          id: destination.id
+          previousState: originalDestinationState
+          newState: destination.state()
+        }
+      })
 
   whoCanSeeEntity: (entity) ->
     # TODO: can they see this entity? Invisible, sneaking, etc.

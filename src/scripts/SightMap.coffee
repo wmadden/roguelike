@@ -112,3 +112,28 @@ class module.exports.SightMap
         newState: newState
       }
     })
+
+  observeDamageInflicted: ({ source, destination }) ->
+    if destination.newState.dead
+      @visibleEntities = _(@visibleEntities).reject (e) -> e.id == destination.id
+
+    @eventStream.push({
+      type: 'damageInflicted'
+      source: {
+        type: source.type
+        id: source.id
+        entityState: _(source.entityState).extend(
+          visibility: CURRENTLY_VISIBLE
+        )
+      }
+      destination: {
+        type: destination.type
+        id: destination.id
+        previousState: _(destination.previousState).extend(
+          visibility: CURRENTLY_VISIBLE
+        )
+        newState: _(destination.newState).extend(
+          visibility: CURRENTLY_VISIBLE
+        )
+      }
+    })
