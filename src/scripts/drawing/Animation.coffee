@@ -2,23 +2,40 @@ events = require 'events'
 _ = require 'underscore'
 
 module.exports.Animation = class Animation extends events.EventEmitter
-  act: ->
-    new Promise (resolve, reject) ->
-      resolve() if isComplete()
-      # reject() if cancelled()
-      @once('complete', resolve)
+  constructor: ->
+    @_started = false
+    @_finished = false
 
-  update: (msElapsed) ->
+  update: (msElapsed) -> # Implement in subclass
 
-  isComplete: -> @_complete
-
-  markCompleted: ->
-    return if @_complete
-    @_complete = true
-    @emit('complete')
+  isStarted: -> @_started
+  isFinished: -> @_finished
 
   stop: ->
-    @markCompleted()
+    return if @_finished
+    @_finished = true
+    @emit('finished')
+
+module.exports.AnimationChain = class AnimationChain extends Animation
+  constructor: (@animations = []) ->
+    @currentAnimationIndex = null
+    for animation in @animations
+      animation.duration = @duration / @animations.length
+
+  update: (msElapsed) ->
+    if not @_started
+      @_started = true
+      @currentAnimationIndex = 0
+
+    if @animations[@currentAnimationIndex].isFinished()
+      allAnimationsAreFinished = @currentAnimationIndex == @animations.length - 1
+      if allAnimationsAreFinished
+        @stop()
+        return
+
+      @currentAnimationIndex += 1
+    currentAnimation = @animations[@currentAnimationIndex]
+    currentAnimation.update(msElapsed)
 
 module.exports.Transition = class Transition extends Animation
   constructor: (@sprite, @properties, @duration, transitionFunction) ->
@@ -26,7 +43,7 @@ module.exports.Transition = class Transition extends Animation
     @originalProperties = _(@sprite).pick(_(@properties).keys())
 
   update: (msElapsed) ->
-    return if @isComplete()
+    return if @isFinished()
     allPropertiesTransitioned = true
     for property, finalValue of @properties
       currentValue = @sprite[property]
@@ -42,7 +59,7 @@ module.exports.Transition = class Transition extends Animation
         allPropertiesTransitioned = false
         @sprite[property] += delta
     if allPropertiesTransitioned
-      @markCompleted()
+      @stop()
 
   @LINEAR: (originalValue, finalValue, currentValue, duration, msElapsed) ->
     totalDelta = finalValue - originalValue
