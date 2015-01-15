@@ -21,4 +21,4 @@ class module.exports.Entity
     action: 'step', direction: direction
 
   state: ->
-    _(this).pick('x', 'y', 'type', 'id')
+    _(this).pick('x', 'y', 'type', 'id', 'dead')
