@@ -75,8 +75,13 @@ class module.exports.StreamRenderer extends events.EventEmitter
         @attachToEventStream(eventStream)
 
   processEvent: (event) ->
-    console.log "Render event '#{event.type}'"
-    Promise.resolve(this["process_#{event.type}"]?(event))
+    console.log "Render event '#{event.type}'", event
+    processEventsSequentially = true
+    if processEventsSequentially
+      Promise.resolve(this["process_#{event.type}"]?(event))
+    else
+      this["process_#{event.type}"]?(event)
+      Promise.resolve()
 
   process_entitySpawn: (event) ->
     { id, newState } = event.entity
